@@ -58,6 +58,12 @@ class PseudomonasDotComScraper():
         """
 
         # Checks
+        if val is None:
+            val = 'https://www.pseudomonas.com'
+
+        if not isinstance(val, str):
+            raise TypeError("The parameter 'url' must be a string indicating the Universal Resource Locator (URL) of the database to scrape.")
+
         self.__url = val
 
     @property
@@ -81,6 +87,13 @@ class PseudomonasDotComScraper():
         """
 
         # Checks
+        if val is None:
+            val = ''
+
+        if not isinstance(val, str):
+            raise TypeError("The parameter 'feature' must be a string indicating the genome feature to query from the database.")
+
+       # Checks
         self.__feature = val
 
 

@@ -1,14 +1,14 @@
 """ :module PseudomonasDotComScraperTest: Test module for PseudomonasDotComScraper."""
 
 # Import class to be tested.
-from PseudomonasDotComScraper import PseudomonasDotComScraper as TestedClass
+from GenDBScraper.PseudomonasDotComScraper import PseudomonasDotComScraper as TestedClass
 
 # 3rd party imports
 import unittest
 import os
 import shutil
 
-class PseudomonasDotComScraperTest(unittest.TestSuite):
+class PseudomonasDotComScraperTest(unittest.TestCase):
     """ :class: Test class for the PseudomonasDotComScraper """
 
     @classmethod
@@ -41,13 +41,13 @@ class PseudomonasDotComScraperTest(unittest.TestSuite):
         instance = TestedClass()
 
         # Check correct class provenance.
-        self.assertIsInstance(test_instance, TestedClass)
+        self.assertIsInstance(instance, TestedClass)
 
         # Check further ancestry.
 
         # Check default attribute values.
         self.assertEqual(instance.url, 'https://www.pseudomonas.com')
-        self.assertIsNone(instance.feature)
+        self.assertEqual(instance.feature, '')
 
     def test_shaped_constructor(self):
         """ Test the shaped constructor (with arguments)."""
@@ -56,7 +56,7 @@ class PseudomonasDotComScraperTest(unittest.TestSuite):
         instance = TestedClass(url='https://www.pseudomonas.com/index.html')
 
         # Check correct class provenance.
-        self.assertIsInstance(test_instance, TestedClass)
+        self.assertIsInstance(instance, TestedClass)
 
     def test_url_setter(self):
         """ Test that the parameter 'url' can be set."""
@@ -106,7 +106,7 @@ class PseudomonasDotComScraperTest(unittest.TestSuite):
         instance.feature = feature
 
         # Check without using property.
-        self.assertEqual(instance._PseudomonasDotCom___feature, feature)
+        self.assertEqual(instance._PseudomonasDotComScraper__feature, feature)
 
     def test_feature_setter_exceptions(self):
         """ Test that passing wrongly typed values to feature setter raises. """
@@ -123,18 +123,20 @@ class PseudomonasDotComScraperTest(unittest.TestSuite):
         feature = 'pflu0916'
 
         # Instantiate.
-        instance = TestedClass(feature)
+        instance = TestedClass(feature=feature)
 
         # Get value.
         self.assertEqual(instance.feature, feature)
 
+    @unittest.expectedFailure
+    def test_method(self):
+        """ Test a method. """
 
-    def test_<+method+>(self):
-        """ Test the <++> method. """
+        # Instantiate.
+        instance = TestClass()
 
-        instance = TestClass(<+args+>)
-
-        <++>
+        # Call a method (expected to raise NotImplemented).
+        instance.method()
 
 def _remove_test_files(files):
     """ """
@@ -154,4 +156,5 @@ def _remove_test_files(files):
         elif os.is_dir(f):
             shutil.rmtree(f)
 
-
+if __name__ == "__main__":
+    unittest.main()
