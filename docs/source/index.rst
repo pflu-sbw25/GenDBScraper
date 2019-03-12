@@ -10,7 +10,7 @@ Welcome to GenDBScraper's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-
+.. include:: include/refman.rst
 
 Indices and tables
 ==================
