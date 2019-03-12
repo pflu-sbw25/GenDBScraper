@@ -1,11 +1,17 @@
 """ :module PseudomonasDotComScraperTest: Test module for PseudomonasDotComScraper."""
 
 # Import class to be tested.
-from GenDBScraper.PseudomonasDotComScraper import PseudomonasDotComScraper as TestedClass
+from GenDBScraper.PseudomonasDotComScraper import PseudomonasDotComScraper
+from GenDBScraper.PseudomonasDotComScraper import pdc_query, _dict_to_pdc_query
+
+# Alias for generic tests.
+TestedClass = PseudomonasDotComScraper
 
 # 3rd party imports
 import unittest
 import os
+import pandas
+import selenium
 import shutil
 
 class PseudomonasDotComScraperTest(unittest.TestCase):
@@ -43,100 +49,142 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         # Check correct class provenance.
         self.assertIsInstance(instance, TestedClass)
 
-        # Check further ancestry.
-
         # Check default attribute values.
-        self.assertEqual(instance.url, 'https://www.pseudomonas.com')
-        self.assertEqual(instance.feature, '')
+        self.assertIsNone(instance._PseudomonasDotComScraper__browser)
+        self.assertEqual(instance._PseudomonasDotComScraper__pdc_url, 'https://www.pseudomonas.com')
+        self.assertIsInstance(instance._PseudomonasDotComScraper__query, pdc_query)
+        self.assertEqual(instance._PseudomonasDotComScraper__query.strain, 'sbw25')
 
-    def test_shaped_constructor(self):
-        """ Test the shaped constructor (with arguments)."""
+    def test_shaped_constructor_query_namedtuple(self):
+        """ Test the shaped constructor (with arguments, query is a namedtuple)."""
 
         # Instantiate.
-        instance = TestedClass(url='https://www.pseudomonas.com/index.html')
+        query = pdc_query('sbw25','pflu0916')
+        instance = TestedClass(query=query)
 
         # Check correct class provenance.
         self.assertIsInstance(instance, TestedClass)
 
-    def test_url_setter(self):
-        """ Test that the parameter 'url' can be set."""
+        # Check member attribute.
+        self.assertEqual(instance._PseudomonasDotComScraper__query, query)
+
+    def test_shaped_constructor_query_dict(self):
+        """ Test the shaped constructor (with arguments, query is a dict)."""
+
+        # Instantiate.
+        query = {'strain' : 'sbw25', 'feature' : 'pflu0916'}
+        instance = TestedClass(query=query)
+
+        # Check correct class provenance.
+        self.assertIsInstance(instance, TestedClass)
+
+        # Check member attribute.
+        self.assertEqual(instance._PseudomonasDotComScraper__query, pdc_query(strain='sbw25', feature='pflu0916'))
+
+    def test_query_setter_named_tuple(self):
+        """ Test that the parameter 'query' can be set as a pdc_query."""
 
         # Parameter to test.
-        url = 'https://www.pseudomonas.com/index.html'
+        query = pdc_query(strain='sbw25', feature='pflu0916')
 
         # Instantiate.
         instance = TestedClass()
 
         # Set value.
-        instance.url = url
+        instance.query = query
 
         # Check without using property.
-        self.assertEqual(instance._PseudomonasDotComScraper__url, url)
+        self.assertEqual(instance._PseudomonasDotComScraper__query, query)
 
-    def test_url_setter_exceptions(self):
-        """ Test that passing wrongly typed values to url setter raises. """
-
-        url = 12
-        instance = TestedClass()
-
-        self.assertRaises(TypeError, instance.url)
-
-    def test_url_getter(self):
-        """ Test the getter for url. """
+    def test_query_setter_dict(self):
+        """ Test that the parameter 'query' can be set as a dict."""
 
         # Parameter to test.
-        url = 'https://www.nonsense.url'
-
-        # Instantiate.
-        instance = TestedClass(url)
-
-        # Get value.
-        self.assertEqual(instance.url, url)
-
-    def test_feature_setter(self):
-        """ Test that the parameter 'feature' can be set."""
-
-        # Parameter to test.
-        feature = 'pflu0084'
+        query = {'strain':'sbw25', 'feature':'pflu0916'}
 
         # Instantiate.
         instance = TestedClass()
 
         # Set value.
-        instance.feature = feature
+        instance.query = query
 
         # Check without using property.
-        self.assertEqual(instance._PseudomonasDotComScraper__feature, feature)
+        self.assertEqual(instance._PseudomonasDotComScraper__query, pdc_query(strain='sbw25', feature='pflu0916'))
 
-    def test_feature_setter_exceptions(self):
-        """ Test that passing wrongly typed values to feature setter raises. """
+    def test_query_setter_exceptions(self):
+        """ Test that passing wrong values to query setter raises. """
 
-        feature = ['pflu0084', 'pflu0916']
-        instance = TestedClass()
+        # Wrong type
+        query = 12
 
-        self.assertRaises(TypeError, instance.feature)
+        self.assertRaises(TypeError, TestedClass, query)
 
-    def test_feature_getter(self):
-        """ Test the getter for feature. """
+        # Wrong keys (giving strain, feature and organism to query.)
+        query = pdc_query('sbw25', 'pflu0915', 'pseudomonas')
+        self.assertRaises(KeyError, TestedClass, query)
+
+        query = pdc_query('sbw25', organism='pseudomonas')
+        self.assertRaises(KeyError, TestedClass, query)
+
+        query = pdc_query(feature='pflu0916', organism='pseudomonas')
+        self.assertIsInstance(TestedClass(query), PseudomonasDotComScraper)
+
+        # Wrong typed values
+        query = pdc_query(strain=12)
+        self.assertRaises(TypeError, TestedClass, query)
+
+    def test_query_getter(self):
+        """ Test the getter for query. """
 
         # Parameter to test.
-        feature = 'pflu0916'
+        query = pdc_query(strain='sbw25')
 
         # Instantiate.
-        instance = TestedClass(feature=feature)
+        instance = TestedClass(query)
 
         # Get value.
-        self.assertEqual(instance.feature, feature)
+        self.assertEqual(instance.query, query)
 
-    @unittest.expectedFailure
-    def test_method(self):
+    def test_connect(self):
+        """ Test establishing a connection to the database. """
+
+        scraper = PseudomonasDotComScraper()
+
+        scraper.connect()
+
+        self.assertIsInstance(scraper._PseudomonasDotComScraper__browser, selenium.webdriver.Firefox)
+
+        scraper._PseudomonasDotComScraper__browser.save_screenshot('/tmp/pseudomonas.com.png')
+
+        self.assertTrue( os.path.isfile('/tmp/pseudomonas.com.png'))
+
+    def test_run_query(self):
         """ Test a method. """
 
         # Instantiate.
-        instance = TestClass()
+        scraper = PseudomonasDotComScraper(query={'strain':'sbw25', 'feature':'pflu0916'})
+        scraper.connect()
 
         # Call a method (expected to raise NotImplemented).
-        instance.method()
+        results = scraper.run_query()
+
+        #self.assertTrue( os.isfile(results))
+
+        #self._test_files.append('/tmp/pseudomonas.com.png')
+
+        #self.assertIsInstance(results_table, pandas.DataFrame)
+
+    def test_dict_to_pdc_query(self):
+        """ Test the conversion utility that returns a pdc_query (named_tuple) from a dict. """
+
+        query_dict = {'strain' : 'sbw25', 'feature' : 'pflu0914', 'organism':None}
+
+        query_pdc = _dict_to_pdc_query(**query_dict)
+
+        self.assertIsInstance(query_pdc, pdc_query)
+        self.assertEqual(query_pdc.strain, 'sbw25')
+        self.assertEqual(query_pdc.feature, 'pflu0914')
+        self.assertIsNone(query_pdc.organism)
 
 def _remove_test_files(files):
     """ """
