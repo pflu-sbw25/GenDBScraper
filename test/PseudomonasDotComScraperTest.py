@@ -13,6 +13,8 @@ import os
 import pandas
 import selenium
 import shutil
+import bs4
+from pandas import DataFrame
 
 class PseudomonasDotComScraperTest(unittest.TestCase):
     """ :class: Test class for the PseudomonasDotComScraper """
@@ -145,6 +147,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         # Get value.
         self.assertEqual(instance.query, query)
 
+    @unittest.expectedFailure
     def test_connect(self):
         """ Test establishing a connection to the database. """
 
@@ -152,27 +155,40 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
 
         scraper.connect()
 
-        self.assertIsInstance(scraper._PseudomonasDotComScraper__browser, selenium.webdriver.Firefox)
-
-        scraper._PseudomonasDotComScraper__browser.save_screenshot('/tmp/pseudomonas.com.png')
-
-        self.assertTrue( os.path.isfile('/tmp/pseudomonas.com.png'))
+        self.assertIsInstance(scraper._PseudomonasDotComScraper__browser, bs4.BeautifulSoup)
 
     def test_run_query(self):
         """ Test a method. """
 
         # Instantiate.
         scraper = PseudomonasDotComScraper(query={'strain':'sbw25', 'feature':'pflu0916'})
-        scraper.connect()
 
         # Call a method (expected to raise NotImplemented).
         results = scraper.run_query()
 
-        #self.assertTrue( os.isfile(results))
+        # Check rtype.
+        self.assertIsInstance(results, dict)
 
-        #self._test_files.append('/tmp/pseudomonas.com.png')
+        # Check keys.
+        for heading in ["Gene Feature Overview",
+                        "Cross-References",
+                        "Product",
+                        "Subcellular localization",
+                        "Pathogen Association Analysis",
+                        "Orthologs/Comparative Genomics",
+                        "Interactions",
+                        "References",
+                        "Gene Ontology",
+                        "Functional Classifications Manually Assigned by PseudoCAP",
+                        "Functional Predictions from Interpro",
+                        ]:
+            self.assertIn(heading, results.keys())
+            self.assertIsInstance(results[heading], DataFrame)
 
-        #self.assertIsInstance(results_table, pandas.DataFrame)
+        # Check content.
+        present_indices = results['Gene Feature Overview'].index
+        for idx in ['Strain', 'Locus Tag', 'Name', 'Replicon', 'Genomic location']:
+            self.assertIn(idx, present_indices)
 
     def test_dict_to_pdc_query(self):
         """ Test the conversion utility that returns a pdc_query (named_tuple) from a dict. """
