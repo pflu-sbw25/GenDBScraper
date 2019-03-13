@@ -11,7 +11,6 @@ TestedClass = PseudomonasDotComScraper
 import unittest
 import os
 import pandas
-import selenium
 import shutil
 import bs4
 from pandas import DataFrame
