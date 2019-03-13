@@ -157,7 +157,7 @@ class PseudomonasDotComScraper():
                         "Interactions",
                         "References",
                         ]:
-            panels[heading] = pandasDF_from_heading(browser, heading)
+            panels[heading] = _pandasDF_from_heading(browser, heading)
 
         # Assemble url for functions (tab "Function/Pathways/GO")
         function_url = feature_link + "&view=functions"
@@ -168,7 +168,7 @@ class PseudomonasDotComScraper():
                 "Functional Classifications Manually Assigned by PseudoCAP",
                 "Functional Predictions from Interpro",
                 ]:
-            panels[heading] = pandasDF_from_heading(browser, heading)
+            panels[heading] = _pandasDF_from_heading(browser, heading)
 
         # Return.
         return panels

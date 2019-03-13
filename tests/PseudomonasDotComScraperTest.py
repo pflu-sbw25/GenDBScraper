@@ -147,16 +147,6 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         # Get value.
         self.assertEqual(instance.query, query)
 
-    @unittest.expectedFailure
-    def test_connect(self):
-        """ Test establishing a connection to the database. """
-
-        scraper = PseudomonasDotComScraper()
-
-        scraper.connect()
-
-        self.assertIsInstance(scraper._PseudomonasDotComScraper__browser, bs4.BeautifulSoup)
-
     def test_run_query(self):
         """ Test a method. """
 
