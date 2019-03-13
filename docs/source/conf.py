@@ -28,6 +28,7 @@ version = '.'.join(release.split('.')[:3])
 # The short X.Y version
 version = '.'.join(release.split('.')[:2])
 
+# Insert package path. NOTE: Must come *after* version parsing.
 sys.path.insert(0, os.path.abspath('./../GenDBScraper/'))
 
 # -- General configuration ---------------------------------------------------
