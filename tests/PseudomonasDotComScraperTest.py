@@ -173,6 +173,15 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         # Connect should bail out.
         self.assertRaises(ConnectionError, scraper.connect)
 
+    def test_connected_read_only(self):
+        """ Test that the connected status cannot be set. """
+
+        # Instantiate the class.
+        scraper = PseudomonasDotComScraper(query=pdc_query(strain='sbw25'))
+
+        with self.assertRaises(AttributeError):
+            scraper.connected=True
+
     def test_query_failure_if_not_connected(self):
         """ Test that the query bails out if not connected to DB."""
 
