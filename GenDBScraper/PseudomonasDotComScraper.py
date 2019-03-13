@@ -17,7 +17,7 @@ pdc_query = namedtuple('pdc_query',
         )
 
 class PseudomonasDotComScraper():
-    """ :class: An API for the pseudomonas.com genome database using web scraping technology. """
+    """  An API for the pseudomonas.com genome database using web scraping technology. """
 
     # Class constructor
     def __init__(self,
