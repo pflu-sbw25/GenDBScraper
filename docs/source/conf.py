@@ -15,7 +15,6 @@
 import os
 import sys
 from pkg_resources import get_distribution
-sys.path.insert(0, os.path.abspath('./../GenDBScraper/'))
 
 
 # -- Project information -----------------------------------------------------
@@ -28,6 +27,8 @@ release = get_distribution(project).version
 version = '.'.join(release.split('.')[:3])
 # The short X.Y version
 version = '.'.join(release.split('.')[:2])
+
+sys.path.insert(0, os.path.abspath('./../GenDBScraper/'))
 
 # -- General configuration ---------------------------------------------------
 
