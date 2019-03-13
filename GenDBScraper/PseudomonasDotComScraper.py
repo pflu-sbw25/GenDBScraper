@@ -42,11 +42,16 @@ class PseudomonasDotComScraper():
         self.__query = None
         self.__pdc_url = 'https://www.pseudomonas.com'
         self.__browser = None
+        self.__connected = False
 
         # Set attributes via setter.
         self.query = query
 
     # Attribute accessors
+    @property
+    def connected(self):
+        return self.__connected
+
     @property
     def query(self):
         """ Get the query.
@@ -60,7 +65,8 @@ class PseudomonasDotComScraper():
 
     @query.setter
     def query(self, val):
-        """ Set query.
+        """"""
+        """ Set the query attribute.
 
         :param val: The value to set.
         :type val: str
@@ -106,12 +112,27 @@ class PseudomonasDotComScraper():
                 raise TypeError("All values in the query must be of type str.")
         self.__query = val
 
+    def connect(self):
+        """ Connect to the database. """
+        try:
+            self.__browser = BeautifulSoup(_simple_get(self.__pdc_url), 'html.parser')
+        except:
+            self.__connected = False
+            raise ConnectionError("Connecting to {0:s} failed. Make sure the URL is set correctly and is reachable.")
+
+        self.__connected = True
+
+
     def run_query(self, query=None):
         """ Submit a query to the db and get results.
 
         :param query: (Optional) the query object to submit.
         :type  query: pdc_query
         """
+
+        # Check if we're connected. Bail out if not.
+        if not self.__connected:
+            raise RuntimeError("Not connected. Call .connect() before submitting the query.")
 
         # If provided, update the local query object. This way, user can submit a query at run time.
         if query is not None:

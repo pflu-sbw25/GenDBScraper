@@ -4,6 +4,9 @@
 from GenDBScraper.PseudomonasDotComScraper import PseudomonasDotComScraper
 from GenDBScraper.PseudomonasDotComScraper import pdc_query, _dict_to_pdc_query
 
+# Utilities
+from TestUtilities.TestUtilities import _remove_test_files
+
 # Alias for generic tests.
 TestedClass = PseudomonasDotComScraper
 
@@ -146,11 +149,47 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         # Get value.
         self.assertEqual(instance.query, query)
 
+    def test_connect(self):
+        """ Test the connect and connected logic. """
+        # Instantiate the class.
+        scraper = PseudomonasDotComScraper(query=pdc_query(strain='sbw25'))
+        # connected should be False.
+        self.assertFalse(scraper.connected)
+
+        # Connect.
+        scraper.connect()
+
+        # Now it should be true.
+        self.assertTrue(scraper.connected)
+
+    def test_connect_failure(self):
+        """ Test exception upon connection failure. """
+
+        # Instantiate the class.
+        scraper = PseudomonasDotComScraper(query=pdc_query(strain='sbw25'))
+        # Mess up the url.
+        scraper._PseudomonasDotComScraper__pdc_url = "https://some.nonexisting.url"
+
+        # Connect should bail out.
+        self.assertRaises(ConnectionError, scraper.connect)
+
+    def test_query_failure_if_not_connected(self):
+        """ Test that the query bails out if not connected to DB."""
+
+        # Instantiate the class.
+        scraper = PseudomonasDotComScraper(query=pdc_query(strain='sbw25'))
+
+        # Run the query. This should fail.
+        self.assertRaises(RuntimeError, scraper.run_query)
+
     def test_run_query(self):
         """ Test a method. """
 
         # Instantiate.
         scraper = PseudomonasDotComScraper(query={'strain':'sbw25', 'feature':'pflu0916'})
+
+        # Connect.
+        scraper.connect()
 
         # Call a method (expected to raise NotImplemented).
         results = scraper.run_query()
@@ -190,24 +229,6 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         self.assertEqual(query_pdc.strain, 'sbw25')
         self.assertEqual(query_pdc.feature, 'pflu0914')
         self.assertIsNone(query_pdc.organism)
-
-def _remove_test_files(files):
-    """ """
-    """ Remove all files and directories listed.
-
-    :param files: Files and directories to remove.
-    :type files: list
-
-    """
-
-    # Loop over files
-    for f in files:
-        # Check if file.
-        if os.is_file(f):
-            os.remove(f)
-        # Check if dir.
-        elif os.is_dir(f):
-            shutil.rmtree(f)
 
 if __name__ == "__main__":
     unittest.main()
