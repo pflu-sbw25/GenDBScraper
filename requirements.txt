@@ -1,4 +1,3 @@
-alabaster
 beautifulsoup4
 html5lib
 lxml
@@ -6,4 +5,3 @@ pandas
 pip
 requests
 setuptools
-sphinx
