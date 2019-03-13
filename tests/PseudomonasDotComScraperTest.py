@@ -239,5 +239,17 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         self.assertEqual(query_pdc.feature, 'pflu0914')
         self.assertIsNone(query_pdc.organism)
 
+    def test_results_with_references(self):
+        """ Run a query that returns non-empty references. """
+
+        query = pdc_query(strain='UCBPP-PA14', feature='PA14_67210')
+
+        scraper = PseudomonasDotComScraper(query=query)
+        scraper.connect()
+        results = scraper.run_query()
+
+        print(results['References'])
+
+
 if __name__ == "__main__":
     unittest.main()

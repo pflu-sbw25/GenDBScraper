@@ -157,11 +157,10 @@ class PseudomonasDotComScraper():
 
         # If we're looking for a unique feature.
         if _feature is not '':
-            feature_link = browser.find(string=re.compile(_feature.upper())).find_parent().get('href')
+            feature_link = browser.find_all('a', string=re.compile(_feature.upper()))[0].get('href')
 
         # Prepend base url.
         feature_link = self.__pdc_url+feature_link
-
         # Get the soup.
         browser = BeautifulSoup(_simple_get(feature_link), 'html.parser')
 
@@ -176,9 +175,9 @@ class PseudomonasDotComScraper():
                         "Pathogen Association Analysis",
                         "Orthologs/Comparative Genomics",
                         "Interactions",
-                        "References",
                         ]:
             panels[heading] = _pandasDF_from_heading(browser, heading)
+            panels["References"] = _pandasDF_from_heading(browser, '^References') # to disambiguate from Cross-References
 
         # Assemble url for functions (tab "Function/Pathways/GO")
         function_url = feature_link + "&view=functions"
@@ -255,6 +254,7 @@ def _pandasDF_from_heading(soup, table_heading):
 
     """
 
+    # Get table html string.
     table_ht = str(soup.find('h3', string=re.compile(table_heading)).find_next())
 
     try:
