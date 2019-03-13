@@ -1,41 +1,20 @@
 """ :module PseudomonasDotComScraper: Hosting the PseudomonasDotComScraper, an API for the https://www.pseudomonas.com database web interface. """
 
-# Local imports
-# import GenDBScraper
-# import SeleniumScraper
-
 # 3rd party imports
+from bs4 import BeautifulSoup
+from collections import namedtuple
+from contextlib import closing
+from pandas import DataFrame, read_html
 from requests import get
 from requests.exceptions import RequestException
-from contextlib import closing
-from bs4 import BeautifulSoup
 import bs4
 import re
-from pandas import DataFrame, read_html
 
-from collections import namedtuple
-
+# Define the query datastructure.
 pdc_query = namedtuple('pdc_query',
         field_names=('strain', 'feature', 'organism'),
         defaults=(None, None, None),
         )
-
-def simple_get(url):
-    with closing(get(url, stream=True)) as resp:
-        if is_good_response(resp):
-            print("INFO: Good response from "+url+".")
-            return resp.content
-        else:
-            raise RuntimeError("ERROR: Could not open "+url+".")
-
-def is_good_response(resp):
-    """
-    Returns True if the response seems to be HTML, False otherwise.
-    """
-    content_type = resp.headers['Content-Type'].lower()
-    return (resp.status_code == 200
-            and content_type is not None
-            and content_type.find('html') > -1)
 
 class PseudomonasDotComScraper():
     """ :class: An API for the pseudomonas.com genome database using web scraping technology. """
@@ -86,6 +65,7 @@ class PseudomonasDotComScraper():
         :param val: The value to set.
         :type val: str
 
+        :raises KeyError: Both 'strain' and 'organism' are provided.
         """
 
         # Checks
@@ -126,33 +106,33 @@ class PseudomonasDotComScraper():
                 raise TypeError("All values in the query must be of type str.")
         self.__query = val
 
-    def connect(self, url):
-        """ Redundant, will be removed."""
-        """ Establish a connection to pseudomonas.com by launching the selenium headless browser. """
-        pass
+    def run_query(self, query=None):
+        """ Submit a query to the db and get results.
 
-        self.__browser = BeautifulSoup(simple_get(url), 'html.parser')
-
-    def run_query(self):
-        """ Submit a query to the db and get results as a structured table. Mutually exclusive with parameter 'organism'.
+        :param query: (Optional) the query object to submit.
+        :type  query: pdc_query
         """
 
-        # Form http query string.
+        # If provided, update the local query object. This way, user can submit a query at run time.
+        if query is not None:
+            self.query = query
+
+        # Form http self.query string.
         _feature = self.query.feature
         if _feature is None:
             _feature = ''
 
-        # Format the html query.
+        # Assemble the html query.
         if self.query.strain is not None: # Searching for specific strain.
             _url = self.__pdc_url+"/primarySequenceFeature/list?c1=name&v1={0:s}&e1=1&term1={1:s}&assembly=complete".format(_feature, self.query.strain)
-        elif query.organism is not None: # Searching for organism.
+        elif self.query.organism is not None: # Searching for organism.
             _url = self.__pdc_url+"/primarySequenceFeature/list?c1=name&v1={0:s}&e1=1&term2={1:s}&assembly=complete".format(_feature, self.query.organism)
 
         # Debug info.
         print("DEBUG: Will now open {0:s}".format(_url))
 
         # Get the soup for the assembled url.
-        browser = BeautifulSoup(simple_get(_url), 'html.parser')
+        browser = BeautifulSoup(_simple_get(_url), 'html.parser')
 
         # If we're looking for a unique feature.
         if _feature is not '':
@@ -162,9 +142,9 @@ class PseudomonasDotComScraper():
         feature_link = self.__pdc_url+feature_link
 
         # Get the soup.
-        browser = BeautifulSoup(simple_get(feature_link), 'html.parser')
+        browser = BeautifulSoup(_simple_get(feature_link), 'html.parser')
 
-        # Setup dict to store query results.
+        # Setup dict to store self.query results.
         panels = dict()
 
         # Loop over headings and get table as pandas.DataFrame.
@@ -181,7 +161,7 @@ class PseudomonasDotComScraper():
 
         # Assemble url for functions (tab "Function/Pathways/GO")
         function_url = feature_link + "&view=functions"
-        browser = BeautifulSoup(simple_get(function_url), 'html.parser')
+        browser = BeautifulSoup(_simple_get(function_url), 'html.parser')
 
         for heading in [
                 "Gene Ontology",
@@ -192,6 +172,39 @@ class PseudomonasDotComScraper():
 
         # Return.
         return panels
+# Helper functions for handling urls.
+
+def _simple_get(url):
+    """ """
+    """ Get content of passed URL to pass on to BeautifulSoup.
+
+    :param url: The URL to parse.
+    :type  url: str
+
+    """
+
+    # Safeguard opening the URL.
+    with closing(get(url, stream=True)) as resp:
+        if _is_good_response(resp):
+            print("INFO: Good response from "+url+".")
+            return resp.content
+        else:
+            raise RuntimeError("ERROR: Could not open "+url+".")
+
+def _is_good_response(resp):
+    """ """
+    """ Returns True if the response seems to be HTML, False otherwise.
+
+    :param resp: The response to validate.
+    :type  resp: http response as returned from contextlib.closing
+
+    """
+
+    content_type = resp.headers['Content-Type'].lower()
+    return (resp.status_code == 200
+            and content_type is not None
+            and content_type.find('html') > -1)
+
 
 def _dict_to_pdc_query(**kwargs):
     """ """
@@ -206,7 +219,8 @@ def _dict_to_pdc_query(**kwargs):
 
     return query
 
-def pandasDF_from_heading(soup, table_heading):
+def _pandasDF_from_heading(soup, table_heading):
+    """ """
     """ Find the table that belongs to the passed heading in a formatted html tree (the soup).
 
     :param soup: The html tree to parse.
