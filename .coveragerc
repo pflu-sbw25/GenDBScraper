@@ -1,0 +1,17 @@
+[run]
+branch = True
+source = GenDBScraper
+
+[report]
+exclude_lines =
+    raise NotImplementedError
+    if __name__ == .__main__.:
+ignore_errors = True
+omit =
+    tests/*
+    devenv/*
+    docs/
+    GenDBScraper.egg-info/*
+    notebooks/*
+    setup.py
+

@@ -12,6 +12,8 @@ Welcome to GenDBScraper's documentation!
 
 This documentation is licensed under a Creative Commons Attribution-ShareAlike 4.0 International License.
 
+The software is licensed under the MIT license. See LICENSE in the project's root directory.
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
