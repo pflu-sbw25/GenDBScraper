@@ -6,6 +6,12 @@
 Welcome to GenDBScraper's documentation!
 ========================================
 
+.. image:: https://i.creativecommons.org/l/by-sa/4.0/88x31.png
+    :target: http://creativecommons.org/licenses/by-sa/4.0/
+    :alt: Creative Commons License
+
+This documentation is licensed under a Creative Commons Attribution-ShareAlike 4.0 International License.
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
