@@ -14,6 +14,7 @@
 #
 import os
 import sys
+from pkg_resources import get_distribution
 sys.path.insert(0, os.path.abspath('./../GenDBScraper/'))
 
 
@@ -23,11 +24,10 @@ project = 'GenDBScraper'
 copyright = '2019, Carsten Fortmann-Grote'
 author = 'Carsten Fortmann-Grote'
 
+release = get_distribution(project).version
+version = '.'.join(release.split('.')[:3])
 # The short X.Y version
-version = ''
-# The full version, including alpha/beta/rc tags
-release = ''
-
+version = '.'.join(release.split('.')[:2])
 
 # -- General configuration ---------------------------------------------------
 
@@ -82,7 +82,7 @@ pygments_style = None
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+html_theme = 'nature'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the

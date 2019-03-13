@@ -1,8 +1,9 @@
-from distutils.core import setup
+from setuptools import setup
 
 setup(
     name='GenDBScraper',
-    version='0.1dev',
+    use_scm_version=True,
+    setup_requires=['setuptools_scm'],
     packages=['GenDBScraper',],
     license='MIT',
     long_description=open('README.md').read(),
