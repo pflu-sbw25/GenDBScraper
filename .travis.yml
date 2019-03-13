@@ -21,7 +21,7 @@ install:
   - conda info -a
   - conda create -q -n test-env python=$TRAVIS_PYTHON_VERSION
   - source activate test-env
-  - conda install -n test-env -r requirements.txt
+  - conda install -n test-env --file requirements.txt
   - conda install -n test-env pip
   - pip install .
 
