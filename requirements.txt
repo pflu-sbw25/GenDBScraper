@@ -1,17 +1,9 @@
-# This file may be used to create an environment using:
-# $ conda create --name <env> --file <this file>
-# platform: linux-64
-alabaster=0.7.12
-beautifulsoup4=4.7.1
-html5lib=1.0.1
-lxml=4.3.2
-pandas=0.24.1
-pip=19.0.3
-requests=2.21.0
-setuptools=40.8.0
-soupsieve=1.7.1
-sphinx=1.8.5
-sphinxcontrib=1.0
-sphinxcontrib-websupport=1.1.0
-urllib3=1.24.1
-wheel=0.33.1
+alabaster
+beautifulsoup4
+html5lib
+lxml
+pandas
+pip
+requests
+setuptools
+sphinx
