@@ -12,6 +12,7 @@ import re
 from doi2bib import crossref
 from pubmed_lookup import Publication, PubMedLookup
 import json
+import GenDBScraper
 from GenDBScraper.Utilities.json_utilities import JSONEncoder
 
 # Define the query datastructure.
@@ -218,7 +219,7 @@ class PseudomonasDotComScraper():
         return file_path
 
     def from_json(self, path):
-        """ Deserialize a json file into a results dictionary (a dict of pandas.pandas.DataFrame).
+        """ Deserialize a json file into a results dictionary (a dict of pandas.DataFrame).
 
         :param path: The file path of the json file to load.
         :type  path: str
@@ -391,4 +392,76 @@ def _get_bib_from_doi(doi):
                  'date'     :"{0:d}-{1:02d}-{2:02d}".format(*(message['published-print']['date-parts'][0])),
                 }
     return entry
+
+def _run_from_cli(args):
+    """ Called if run via command line interface.
+
+    :param args: Command line arguments.
+    :type  args: argparse.ArgumentsObject
+
+    """
+
+    # Construct the query.
+    query = pdc_query(args.strain, args.feature, args.organism)
+
+    # Construct the Scraper.
+    scraper = PseudomonasDotComScraper(query)
+
+    try:
+        scraper.connect()
+    except:
+        print("ERROR: Could not connect to pseudomonas.com.")
+        return 0
+
+    # Run the query and serialize.
+    try:
+        results = scraper.run_query()
+    except:
+        print("ERROR: Query failed.")
+        return 0
+
+    try:
+        path = scraper.to_json(results)
+    except:
+        print("ERROR: Could not write results to disk.")
+        return 0
+
+    # Message.
+    print("INFO: Query was successfull. Results stored in {0:s}.".format(path))
+
+    del scraper
+
+    return 1
+
+if __name__ == "__main__":
+
+    from argparse import ArgumentParser
+
+    # Setup argument parser.
+    parser = ArgumentParser()
+
+    # Add arguments.
+    parser.add_argument("-s",
+                        "--strain",
+                        dest="strain",
+                        default=None,
+                        help="The strain to query from pseudomonas.com. Mutually exclusive with parameter 'organism'.")
+
+    parser.add_argument("-f",
+                        "--feature",
+                        dest="feature",
+                        default=None,
+                        help="The gene/feature to query from pseudomonas.com.")
+
+    parser.add_argument("-o",
+                        "--organism",
+                        dest="organism",
+                        default=None,
+                        help="The organism to query from pseudomonas.com. Mutually exclusive with parameter 'strain'.")
+
+    # Parse arguments.
+    args = parser.parse_args()
+
+    _run_from_cli(args)
+
 

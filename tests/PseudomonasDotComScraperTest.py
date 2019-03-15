@@ -16,12 +16,14 @@ TestedClass = PseudomonasDotComScraper
 
 # 3rd party imports
 import unittest
-import os
+import inspect
+import os, sys
 import pandas
 import shutil
 import bs4
 from bs4 import BeautifulSoup
 from pandas import DataFrame
+from subprocess import Popen
 
 class PseudomonasDotComScraperTest(unittest.TestCase):
     """ :class: Test class for the PseudomonasDotComScraper """
@@ -326,31 +328,25 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
             self.assertIn(xk, present_keys)
             self.assertIsInstance(loaded_results[xk], pandas.DataFrame)
 
-
-    @unittest.skip("Not implemented yet.")
     def test_cli(self):
         """ Test the command-line interface of the scraper. """
 
         # Aggregate the command.
         strain='sbw25'
         gene='pflu0916'
-        command = ['sh', 'PseudomonasDotComScraper.py', '--strain={}'.format(strain), '--feature={}'.format(gene)]
+
+        path = inspect.getsourcefile(PseudomonasDotComScraper)
+        command = ['python', path, '--strain={}'.format(strain), '--feature={}'.format(gene)]
 
         # Run command
-        process = Popen(command, shell=False)
+        process = Popen(command, shell=False, stdout=sys.stdout)
+        process.wait()
 
         # Check output written to file.
-        directory_content = os.listdir('.')
-
-        #expected_file = "{}.{}.hdf"
-        #self.assertIn(
-
-        ## Load output file content
-        #<+py+>
-
-        ## Check content.
-        #<+py+>
-
+        directory_content = os.listdir(os.getcwd())
+        expected_file = "{0:s}.{1:s}.json".format(strain, gene)
+        self._test_files.append(expected_file)
+        self.assertIn(expected_file, directory_content)
 
 if __name__ == "__main__":
     unittest.main()
