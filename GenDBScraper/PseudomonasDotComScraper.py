@@ -4,11 +4,15 @@
 from bs4 import BeautifulSoup
 from collections import namedtuple
 from contextlib import closing
-from pandas import DataFrame, read_html
+import pandas
 from requests import get
 from requests.exceptions import RequestException
 import bs4
 import re
+from doi2bib import crossref
+from pubmed_lookup import Publication, PubMedLookup
+import json
+from GenDBScraper.Utilities.json_utilities import JSONEncoder
 
 # Define the query datastructure.
 pdc_query = namedtuple('pdc_query',
@@ -162,37 +166,85 @@ class PseudomonasDotComScraper():
         # Prepend base url.
         feature_link = self.__pdc_url+feature_link
         # Get the soup.
-        browser = BeautifulSoup(_simple_get(feature_link), 'html.parser')
+        #browser = BeautifulSoup(_simple_get(feature_link), 'html.parser')
+        browser = BeautifulSoup(_simple_get(feature_link), 'lxml')
 
         # Setup dict to store self.query results.
         panels = dict()
 
-        # Loop over headings and get table as pandas.DataFrame.
-        for heading in ["Gene Feature Overview",
-                        "Cross-References",
-                        "Product",
-                        "Subcellular localization",
-                        "Pathogen Association Analysis",
-                        "Orthologs/Comparative Genomics",
-                        "Interactions",
-                        ]:
-            panels[heading] = _pandasDF_from_heading(browser, heading)
-            panels["References"] = _pandasDF_from_heading(browser, '^References') # to disambiguate from Cross-References
+        # Loop over headings and get table as pandas.pandas.DataFrame.
+        panels["Gene Feature Overview"] = _pandasDF_from_heading(browser, "Gene Feature Overview", 0)
+        panels["Cross-References"] = _pandasDF_from_heading(browser, "Cross-References", 0)
+        panels["Product"] = _pandasDF_from_heading(browser, "Product", 0)
+        panels["Subcellular localization"] = _pandasDF_from_heading(browser, "Subcellular localization",  0)
+        panels["Pathogen Association Analysis"] = _pandasDF_from_heading(browser, "Pathogen Association Analysis", 0)
+        panels["Orthologs/Comparative Genomics"] = _pandasDF_from_heading(browser, "Orthologs/Comparative Genomics", 0 )
+        panels["Interactions"] = _pandasDF_from_heading(browser, "Interactions", 0)
+
+        panels["References"] = _pandas_references(browser)
 
         # Assemble url for functions (tab "Function/Pathways/GO")
         function_url = feature_link + "&view=functions"
         browser = BeautifulSoup(_simple_get(function_url), 'html.parser')
 
-        for heading in [
-                "Gene Ontology",
-                "Functional Classifications Manually Assigned by PseudoCAP",
-                "Functional Predictions from Interpro",
-                ]:
-            panels[heading] = _pandasDF_from_heading(browser, heading)
+        panels["Gene Ontology"] = _pandasDF_from_heading(browser,"Gene Ontology", None)
+        panels["Functional Classifications Manually Assigned by PseudoCAP"] = _pandasDF_from_heading(browser,"Functional Classifications Manually Assigned by PseudoCAP", None)
+        panels["Functional Predictions from Interpro"] = _pandasDF_from_heading(browser,"Functional Predictions from Interpro", None)
 
         # Return.
         return panels
 # Helper functions for handling urls.
+
+    def to_json(self, results):
+        """ Serialize results dictionary to json.
+
+        :param results: The results dictionary (dict of pandas.DataFrame).
+        :type  results: dict
+
+        """
+
+        # Setup the filename from query items.
+        if self.query.strain is not None:
+            major = self.query.strain
+        else:
+            major = self.query.organism
+
+        minor = self.query.feature
+
+        file_path = "{0:s}.{1:s}.json".format(major, minor)
+        # Call the workhorse.
+        _serialize(file_path, results)
+
+        return file_path
+
+    def from_json(self, path):
+        """ Deserialize a json file into a results dictionary (a dict of pandas.pandas.DataFrame).
+
+        :param path: The file path of the json file to load.
+        :type  path: str
+
+        """
+
+        return _deserialize(path)
+
+def _serialize(path, obj):
+    """ """
+    """ Serialize the passed dictionary (obj) to path. """
+
+    with open(path, 'w') as fp:
+        json.dump(obj, fp, cls=JSONEncoder)
+
+def _deserialize(path):
+    """ """
+    """ Deserialize a json file (located at 'path') into a dictionary. Reconstruct pandas.DataFrames from loaded content. """
+    with open(path, 'r') as fp:
+        loaded = json.load(fp)
+
+    ret = {}
+    for k,v in loaded.items():
+        ret[k] = pandas.read_json(v)
+
+    return ret
 
 def _simple_get(url):
     """ """
@@ -225,7 +277,6 @@ def _is_good_response(resp):
             and content_type is not None
             and content_type.find('html') > -1)
 
-
 def _dict_to_pdc_query(**kwargs):
     """ """
     """
@@ -239,7 +290,7 @@ def _dict_to_pdc_query(**kwargs):
 
     return query
 
-def _pandasDF_from_heading(soup, table_heading):
+def _pandasDF_from_heading(soup, table_heading, index_column=0):
     """ """
     """ Find the table that belongs to the passed heading in a formatted html tree (the soup).
 
@@ -249,8 +300,11 @@ def _pandasDF_from_heading(soup, table_heading):
     :param table_heading: The table heading to find.
     :type  table_heading: str
 
-    :return: The table under the passed heading as a pandas.DataFrame
-    :rtype: pandas.DataFrame
+    :param index_column: Which column to use as the pandas.DataFrame's index.
+    :type  index_column: int
+
+    :return: The table under the passed heading as a pandas.pandas.DataFrame
+    :rtype: pandas.pandas.DataFrame
 
     """
 
@@ -258,10 +312,83 @@ def _pandasDF_from_heading(soup, table_heading):
     table_ht = str(soup.find('h3', string=re.compile(table_heading)).find_next())
 
     try:
-        df = read_html(table_ht, index_col=0)[0]
+        df = pandas.read_html(table_ht, index_col=index_column)[0]
     except:
-        print("WARNING: No data found for '"+table_heading+"'. Will return empty DataFrame.")
+        print("WARNING: No data found for '"+table_heading+"'. Will return empty pandas.DataFrame.")
 
-        df = DataFrame()
+        df = pandas.DataFrame()
 
     return df
+
+def _pandas_references(soup):
+    """ Extract references from given html soup and return them as pandas pandas.DataFrame. """
+
+    # Setup container to store parsed information.
+    raw = []
+
+    # Get the References "table".
+    ref_soup = soup.find("h3", string=re.compile('^References'))
+
+    # Get all <a> tags.
+    a_tags = ref_soup.find_next().find_all('a')
+
+    # Loop over all <a> tags
+    for i,a in enumerate(a_tags):
+        #pubmed_id_string = a.string
+
+        # Strip \t, \n, and spaces.
+        #pubmed_id = re.sub(pattern="[\t,\n,\s]", repl="", string=pubmed_id_string)
+        # Get the link text.
+        pubmed_link=a.get('href')
+
+        citation = Publication(PubMedLookup(pubmed_link, '')).cite()
+
+        ## Append to storage container.
+
+
+        ## Get doi from pubmed link.
+        #doi =_get_doi_from_ncbi(pubmed_link)
+
+        ## Get bibliographic information from doi.
+        #bib = _get_bib_from_doi(doi)
+
+        raw.append(dict(pubmed_url=pubmed_link, citation=citation))
+
+
+    # Return as pandas.DataFrame.
+    df = pandas.DataFrame(raw)
+
+    return df
+
+def _get_doi_from_ncbi(pubmed_link):
+        """ Extract the DOI from a pubmed link. """
+
+        if (pubmed_link != ''):
+            doi_soup = BeautifulSoup(_simple_get(pubmed_link), 'lxml')
+        line = doi_soup.find(string=re.compile("DOI")).find_parent().find_parent()
+        a = line.find('a', string=re.compile('10\.[0-9]*\/'))
+        doi_string = a.text
+        doi = re.sub("[\t,\n,\s]","",doi_string)
+
+        return doi
+
+def _get_bib_from_doi(doi):
+    """ Get bibliographic information from a given doi."""
+
+    # Get bib data.
+    success, json = crossref.get_json(doi)
+
+    if success and json['status'].lower() == 'ok':
+        message = json['message']
+
+        entry = {'doi'      :doi,
+                 'first_author'   :"{0:s}, {1:s}".format(message['author'][0]['family'],
+                                                   message['author'][0]['given']),
+                 'title'    :message['title'][0],
+                 'container':message['container-title'][0],
+                 'volume'   :message['volume'],
+                 'page'     :message['page'],
+                 'date'     :"{0:d}-{1:02d}-{2:02d}".format(*(message['published-print']['date-parts'][0])),
+                }
+    return entry
+

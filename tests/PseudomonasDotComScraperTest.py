@@ -2,7 +2,11 @@
 
 # Import class to be tested.
 from GenDBScraper.PseudomonasDotComScraper import PseudomonasDotComScraper
-from GenDBScraper.PseudomonasDotComScraper import pdc_query, _dict_to_pdc_query
+from GenDBScraper.PseudomonasDotComScraper import pdc_query,\
+                                                  _dict_to_pdc_query,\
+                                                  _simple_get,\
+                                                  _pandas_references,\
+                                                  _get_bib_from_doi
 
 # Utilities
 from TestUtilities.TestUtilities import _remove_test_files
@@ -16,6 +20,7 @@ import os
 import pandas
 import shutil
 import bs4
+from bs4 import BeautifulSoup
 from pandas import DataFrame
 
 class PseudomonasDotComScraperTest(unittest.TestCase):
@@ -249,6 +254,102 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         results = scraper.run_query()
 
         print(results['References'])
+
+    def test_pandas_references(self):
+        """ Test the references parser function."""
+
+        soup = BeautifulSoup(_simple_get("https://www.pseudomonas.com/feature/show/?id=1661780&view=overview"), 'lxml')
+
+        references = _pandas_references(soup)
+
+        print(references)
+
+    def test_bib_from_doi(self):
+        """ Test the get_bib_from_doi utility. """
+
+        doi = '10.1073/pnas.1700286114'
+
+        bib = _get_bib_from_doi(doi)
+
+        expected_keys = ['doi',
+                         'first_author',
+                         'title',
+                         'container',
+                         'volume',
+                         'page',
+                         'date',
+                         ]
+
+        present_keys = bib.keys()
+        for key in expected_keys:
+            self.assertIn(key, present_keys)
+
+    def test_json_io(self):
+        """ Test the IO capabilities based on the json format. """
+
+        # Setup the query.
+        query = pdc_query(strain='UCBPP-PA14', feature='PA14_67210')
+
+        # Setup the scraper.
+        scraper = PseudomonasDotComScraper(query=query)
+
+        # Connect and run the query.
+        scraper.connect()
+        results = scraper.run_query()
+
+        # Serialize.
+        json_path = scraper.to_json(results)
+        self._test_files.append(json_path)
+
+        # Check file exists.
+        self.assertTrue(os.path.isfile(json_path))
+
+        # Read back in.
+        loaded_results = scraper.from_json(json_path)
+
+        # Check entity and keys.
+        self.assertIsInstance(loaded_results, dict)
+        expected_keys = ["Gene Feature Overview",
+                        "Cross-References",
+                        "Product",
+                        "Subcellular localization",
+                        "Pathogen Association Analysis",
+                        "Orthologs/Comparative Genomics",
+                        "Interactions",
+                        "References",
+                        "Gene Ontology",
+                        "Functional Classifications Manually Assigned by PseudoCAP",
+                        "Functional Predictions from Interpro",
+                        ]
+        present_keys = loaded_results.keys()
+        for xk in expected_keys:
+            self.assertIn(xk, present_keys)
+            self.assertIsInstance(loaded_results[xk], pandas.DataFrame)
+
+
+    @unittest.skip("Not implemented yet.")
+    def test_cli(self):
+        """ Test the command-line interface of the scraper. """
+
+        # Aggregate the command.
+        strain='sbw25'
+        gene='pflu0916'
+        command = ['sh', 'PseudomonasDotComScraper.py', '--strain={}'.format(strain), '--feature={}'.format(gene)]
+
+        # Run command
+        process = Popen(command, shell=False)
+
+        # Check output written to file.
+        directory_content = os.listdir('.')
+
+        #expected_file = "{}.{}.hdf"
+        #self.assertIn(
+
+        ## Load output file content
+        #<+py+>
+
+        ## Check content.
+        #<+py+>
 
 
 if __name__ == "__main__":
