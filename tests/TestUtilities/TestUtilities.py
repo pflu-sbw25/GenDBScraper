@@ -1,5 +1,7 @@
 """ :module TestUtilities: Hosting various utilities useful for testing. """
 
+import os, shutil
+
 def _remove_test_files(files):
     """ """
     """ Remove all files and directories listed.
@@ -12,10 +14,10 @@ def _remove_test_files(files):
     # Loop over files
     for f in files:
         # Check if file.
-        if os.is_file(f):
+        if os.path.isfile(f):
             os.remove(f)
         # Check if dir.
-        elif os.is_dir(f):
+        elif os.path.isdir(f):
             shutil.rmtree(f)
 
 
