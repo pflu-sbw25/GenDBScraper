@@ -440,20 +440,22 @@ if __name__ == "__main__":
     # Setup argument parser.
     parser = ArgumentParser()
 
-    # Add arguments.
-    parser.add_argument("-s",
-                        "--strain",
-                        dest="strain",
-                        default=None,
-                        help="The strain to query from pseudomonas.com. Mutually exclusive with parameter 'organism'.")
 
     parser.add_argument("-f",
                         "--feature",
                         dest="feature",
                         default=None,
+                        required=True,
                         help="The gene/feature to query from pseudomonas.com.")
 
-    parser.add_argument("-o",
+    org_group = parser.add_mutually_exclusive_group(required=True)
+    org_group.add_argument("-s",
+                        "--strain",
+                        dest="strain",
+                        default=None,
+                        help="The strain to query from pseudomonas.com. Mutually exclusive with parameter -o/--organism option.")
+
+    org_group.add_argument("-o",
                         "--organism",
                         dest="organism",
                         default=None,
