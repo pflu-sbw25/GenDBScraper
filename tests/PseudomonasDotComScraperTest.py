@@ -344,7 +344,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
 
         # Check output written to file.
         directory_content = os.listdir(os.getcwd())
-        expected_file = "{0:s}.{1:s}.json".format(strain, gene)
+        expected_file = "{0:s}_{1:s}.json".format(strain, gene)
         self._test_files.append(expected_file)
         self.assertIn(expected_file, directory_content)
 

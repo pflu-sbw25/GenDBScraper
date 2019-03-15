@@ -12,6 +12,7 @@ import re
 from doi2bib import crossref
 from pubmed_lookup import Publication, PubMedLookup
 import json
+import os
 import GenDBScraper
 from GenDBScraper.Utilities.json_utilities import JSONEncoder
 
@@ -27,13 +28,16 @@ class PseudomonasDotComScraper():
     # Class constructor
     def __init__(self,
             query=None,
-            feature=None,
+            outfile=None,
             ):
         """
         PseudomonasDotComScraper constructor.
 
         :param query: The query to submit to the database.
         :type query: (pdc_query || dict)
+
+        :param outfile: Where to write the queried results.
+        :type  outfile: str
 
         :example: scraper = PseudomonasDotComScraper(query={'strain' : 'sbw25', 'feature' : 'pflu0916'})
         :example: scraper = PseudomonasDotComScraper(query=pdc_query(strain='sbw25', feature='pflu0916'))
@@ -48,6 +52,7 @@ class PseudomonasDotComScraper():
         self.__pdc_url = 'https://www.pseudomonas.com'
         self.__browser = None
         self.__connected = False
+        self.__outfile = outfile
 
         # Set attributes via setter.
         self.query = query
@@ -212,7 +217,11 @@ class PseudomonasDotComScraper():
 
         minor = self.query.feature
 
-        file_path = "{0:s}.{1:s}.json".format(major, minor)
+        if self.__outfile is None:
+            file_path = os.path.abspath(os.path.join(os.getcwd(),"{0:s}_{1:s}.json".format(major, minor)))
+        else:
+            file_path = self.__outfile
+
         # Call the workhorse.
         _serialize(file_path, results)
 
@@ -405,7 +414,7 @@ def _run_from_cli(args):
     query = pdc_query(args.strain, args.feature, args.organism)
 
     # Construct the Scraper.
-    scraper = PseudomonasDotComScraper(query)
+    scraper = PseudomonasDotComScraper(query, outfile=args.outfile)
 
     try:
         scraper.connect()
@@ -424,6 +433,7 @@ def _run_from_cli(args):
         path = scraper.to_json(results)
     except:
         print("ERROR: Could not write results to disk.")
+        raise
         return 0
 
     # Message.
@@ -440,6 +450,13 @@ if __name__ == "__main__":
     # Setup argument parser.
     parser = ArgumentParser()
 
+    parser.add_argument("-o",
+                        "--outfile",
+                        dest="outfile",
+                        default=None,
+                        required=False,
+                        help="Where to write the query results.",
+                        )
 
     parser.add_argument("-f",
                         "--feature",
@@ -455,7 +472,7 @@ if __name__ == "__main__":
                         default=None,
                         help="The strain to query from pseudomonas.com. Mutually exclusive with parameter -o/--organism option.")
 
-    org_group.add_argument("-o",
+    org_group.add_argument("-O",
                         "--organism",
                         dest="organism",
                         default=None,
