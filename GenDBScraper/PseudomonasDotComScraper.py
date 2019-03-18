@@ -13,6 +13,7 @@ from doi2bib import crossref
 from pubmed_lookup import Publication, PubMedLookup
 import json
 import os
+import tempfile
 import GenDBScraper
 from GenDBScraper.Utilities.json_utilities import JSONEncoder
 
@@ -28,16 +29,12 @@ class PseudomonasDotComScraper():
     # Class constructor
     def __init__(self,
             query=None,
-            outfile=None,
             ):
         """
         PseudomonasDotComScraper constructor.
 
         :param query: The query to submit to the database.
         :type query: (pdc_query || dict)
-
-        :param outfile: Where to write the queried results.
-        :type  outfile: str
 
         :example: scraper = PseudomonasDotComScraper(query={'strain' : 'sbw25', 'feature' : 'pflu0916'})
         :example: scraper = PseudomonasDotComScraper(query=pdc_query(strain='sbw25', feature='pflu0916'))
@@ -52,7 +49,6 @@ class PseudomonasDotComScraper():
         self.__pdc_url = 'https://www.pseudomonas.com'
         self.__browser = None
         self.__connected = False
-        self.__outfile = outfile
 
         # Set attributes via setter.
         self.query = query
@@ -199,28 +195,32 @@ class PseudomonasDotComScraper():
 
         # Return.
         return panels
-# Helper functions for handling urls.
 
-    def to_json(self, results):
+    def to_json(self, results, outfile=None):
         """ Serialize results dictionary to json.
 
         :param results: The results dictionary (dict of pandas.DataFrame).
         :type  results: dict
 
+        :param outfile: Path to file for writing query results to. Default: None, will write to temp file.
+        :type  outfile: str
+
+        :raises IOError: 'outfile' not writable.
+
+        :return: If successful, path to written file.
         """
 
-        # Setup the filename from query items.
-        if self.query.strain is not None:
-            major = self.query.strain
-        else:
-            major = self.query.organism
+        if outfile is None:
+            # Setup the filename from query items.
+            if self.query.strain is not None:
+                major = self.query.strain
+            else:
+                major = self.query.organism
+            minor = self.query.feature
+            file_path = tempfile.mkstemp(prefix="{0:s}_{1:s}_".format(major, minor), suffix="json")[1]
 
-        minor = self.query.feature
-
-        if self.__outfile is None:
-            file_path = os.path.abspath(os.path.join(os.getcwd(),"{0:s}_{1:s}.json".format(major, minor)))
         else:
-            file_path = self.__outfile
+            file_path = outfile
 
         # Call the workhorse.
         _serialize(file_path, results)
@@ -414,7 +414,7 @@ def _run_from_cli(args):
     query = pdc_query(args.strain, args.feature, args.organism)
 
     # Construct the Scraper.
-    scraper = PseudomonasDotComScraper(query, outfile=args.outfile)
+    scraper = PseudomonasDotComScraper(query)
 
     try:
         scraper.connect()
@@ -430,7 +430,7 @@ def _run_from_cli(args):
         return 0
 
     try:
-        path = scraper.to_json(results)
+        path = scraper.to_json(results, args.outfile)
     except:
         print("ERROR: Could not write results to disk.")
         raise

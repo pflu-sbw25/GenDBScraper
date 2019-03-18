@@ -328,25 +328,6 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
             self.assertIn(xk, present_keys)
             self.assertIsInstance(loaded_results[xk], pandas.DataFrame)
 
-    def test_cli(self):
-        """ Test the command-line interface of the scraper. """
-
-        # Aggregate the command.
-        strain='sbw25'
-        gene='pflu0916'
-
-        path = inspect.getsourcefile(PseudomonasDotComScraper)
-        command = ['python', path, '--strain={}'.format(strain), '--feature={}'.format(gene)]
-
-        # Run command
-        process = Popen(command, shell=False, stdout=sys.stdout)
-        process.wait()
-
-        # Check output written to file.
-        directory_content = os.listdir(os.getcwd())
-        expected_file = "{0:s}_{1:s}.json".format(strain, gene)
-        self._test_files.append(expected_file)
-        self.assertIn(expected_file, directory_content)
 
 if __name__ == "__main__":
     unittest.main()
