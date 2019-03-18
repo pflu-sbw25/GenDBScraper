@@ -6,3 +6,5 @@ pandas
 pip
 requests
 setuptools
+doi2bib
+pubmed_lookup
