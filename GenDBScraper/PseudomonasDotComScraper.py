@@ -62,8 +62,8 @@ class PseudomonasDotComScraper():
     def query(self):
         """ Get the query.
 
-        :return: The strings to query the database.
-        :rtype:  str
+        :return: The query object.
+        :rtype:  pdc_query
 
         """
 
@@ -75,7 +75,7 @@ class PseudomonasDotComScraper():
         """ Set the query attribute.
 
         :param val: The value to set.
-        :type val: str
+        :type  val: (pdc_query | dict)
 
         :raises KeyError: Both 'strain' and 'organism' are provided.
         """
@@ -127,7 +127,6 @@ class PseudomonasDotComScraper():
             raise ConnectionError("Connecting to {0:s} failed. Make sure the URL is set correctly and is reachable.")
 
         self.__connected = True
-
 
     def run_query(self, query=None):
         """ Submit a query to the db and get results.
@@ -217,7 +216,7 @@ class PseudomonasDotComScraper():
             else:
                 major = self.query.organism
             minor = self.query.feature
-            file_path = tempfile.mkstemp(prefix="{0:s}_{1:s}_".format(major, minor), suffix="json")[1]
+            file_path = tempfile.mkstemp(prefix="{0:s}_{1:s}_".format(major, minor), suffix=".json")[1]
 
         else:
             file_path = outfile
@@ -227,11 +226,11 @@ class PseudomonasDotComScraper():
 
         return file_path
 
-    def from_json(self, path):
+    def from_json(self, infile):
         """ Deserialize a json file into a results dictionary (a dict of pandas.DataFrame).
 
-        :param path: The file path of the json file to load.
-        :type  path: str
+        :param infile: The file path of the json file to load.
+        :type  infile: str
 
         """
 
