@@ -1,6 +1,7 @@
 # GenDBScraper
 [![Build Status](https://travis-ci.org/pflu-sbw25/GenDBScraper.svg?branch=master)](https://travis-ci.org/pflu-sbw25/GenDBScraper)
 [![Documentation Status](https://readthedocs.org/projects/gendbscraper/badge/?version=latest)](https://gendbscraper.readthedocs.io/en/latest/?badge=latest)
+[![Test coverage](http://codecov.io/github/pflu-sbw25/GenDBScraper/coverage.svg?branch=master)](http://codecov.io/github/pflu-sbw25/GenDBScraper)
 
 Library of APIs for various genetic databases.
 
