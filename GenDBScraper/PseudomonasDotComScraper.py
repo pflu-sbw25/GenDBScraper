@@ -81,40 +81,59 @@ class PseudomonasDotComScraper():
 
         # Checks
         if val is None:
-            val = pdc_query(strain='sbw25')
+            val = [pdc_query(strain='sbw25')]
 
-        if not isinstance(val, (dict, pdc_query)):
-            raise TypeError("The parameter 'query' must be a dict or pdc_query. Examples: query={'strain' : 'sbw25', 'feature'='pflu0916'}; query=pdc_query(strain='sbw25', feature='pflu0916').")
 
-        # Check keys if dict.
-        if isinstance(val, dict):
-            # Only these are acceptable query keywords.
-            accepted_keys = ('strain', 'feature', 'organism')
-            present_keys = val.keys()
-            for k in present_keys:
-                if not k in accepted_keys:
-                    raise KeyError("Only 'strain', 'feature', and 'organism' are acceptable keys.)")
+        exc = TypeError("The parameter 'query' must be a dict or pdc_query or a list, tuple, or set of queries. Examples: query={'strain' : 'sbw25', 'feature'='pflu0916'}; query=pdc_query(strain='sbw25', feature='pflu0916') or query=[pdc_query(strain='sbw25', feature='pflu0916'), pdc_query(strain='sbw25', feature='pflu0917')].")
 
-            # Complete keywords.
-            if not 'strain' in val.keys():
-                val['strain'] = None
-            if not 'feature' in val.keys():
-                val['feature'] = None
-            if not 'organism' in val.keys():
-                val['organism'] = None
+        if not isinstance(val, list):
+            if not (isinstance(val, dict) or isinstance(val, pdc_query)):
+                raise exc
+            else:
+                val = [val]
 
-            # Convert to pdc_query
-            print('INFO: Query dictionary passed to pseudomonas.com scraper will now be converted to a pdc_query object. See reference manual for more details.')
-            val = _dict_to_pdc_query(**val)
+        for i,v in enumerate(val):
+            if isinstance(v, dict):
+                pass
+            elif isinstance(v, pdc_query):
+                pass
+            else:
+                raise exc
 
-        # Check keywords are internally consistent.
-        if val.organism is not None and val.strain is not None:
-            raise KeyError("Invalid combination of query keywords: 'organism' must not be combined with 'strain'.")
+        # Iterate over all queries.
+        for i,v in enumerate(val):
+            # Check keys if dict.
+            if isinstance(v, dict):
+                # Only these are acceptable query keywords.
+                accepted_keys = ('strain', 'feature', 'organism')
+                present_keys = v.keys()
+                for k in present_keys:
+                    if not k in accepted_keys:
+                        raise KeyError("Only 'strain', 'feature', and 'organism' are acceptable keys.)")
 
-        # Check all values are strings or None.
-        for v in val[:]:
-            if not (isinstance(v, str) or v is None):
-                raise TypeError("All values in the query must be of type str.")
+                # Complete keywords.
+                if not 'strain' in v.keys():
+                    v['strain'] = None
+                if not 'feature' in v.keys():
+                    v['feature'] = None
+                if not 'organism' in v.keys():
+                    v['organism'] = None
+
+                # Convert to pdc_query
+                print('INFO: Query dictionary passed to pseudomonas.com scraper will now be converted to a pdc_query object. See reference manual for more details.')
+                v = _dict_to_pdc_query(**v)
+
+            # Check keywords are internally consistent.
+            if v.organism is not None and v.strain is not None:
+                raise KeyError("Invalid combination of query keywords: 'organism' must not be combined with 'strain'.")
+
+            # Check all values are strings or None.
+            for vv in v[:]:
+                if not (isinstance(vv, str) or vv is None):
+                    raise TypeError("All values in the query must be of type str.")
+            # Reset checked item.
+            val[i] = v
+
         self.__query = val
 
     def connect(self):
@@ -128,10 +147,14 @@ class PseudomonasDotComScraper():
         self.__connected = True
 
     def run_query(self, query=None):
-        """ Submit a query to the db and get results.
+        """ Run a query on pseudomonas.com
 
-        :param query: (Optional) the query object to submit.
-        :type  query: pdc_query
+        :param query: The query object to run.
+        :type  query: [list of] (pdc_query | dict)
+
+        :return: The query results as a dictionary with 'strain_feature' keys.
+        :rtype: dict
+
         """
 
         # Check if we're connected. Bail out if not.
@@ -141,6 +164,22 @@ class PseudomonasDotComScraper():
         # If provided, update the local query object. This way, user can submit a query at run time.
         if query is not None:
             self.query = query
+
+        results = dict()
+
+        for query in self.query:
+            key = "{0:s}_{1:s}".format(query.strain, query.feature)
+            results[key] = self._run_one_query(query)
+
+        return results
+
+    def _run_one_query(self, query):
+        """ """
+        """ Workhorse function to run a query.
+
+        :param query: Query object to submit.
+        :type  query: pdc_query
+        """
 
         # Form http self.query string.
         _feature = self.query.feature
