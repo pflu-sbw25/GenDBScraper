@@ -22,8 +22,9 @@ install:
   - pip install .
 
 script:
-  - coverage run tests/Tests.py
+  - cd $TRAVIS_BUILD_DIR/tests
+  - coverage run Tests.py
 
 after_success:
+  - cd $TRAVIS_BUILD_DIR/tests
   - codecov
-
