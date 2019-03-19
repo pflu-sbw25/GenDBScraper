@@ -193,7 +193,7 @@ class PseudomonasDotComScraper():
             _url = self.__pdc_url+"/primarySequenceFeature/list?c1=name&v1={0:s}&e1=1&term2={1:s}&assembly=complete".format(_feature, self.query.organism)
 
         # Debug info.
-        print("DEBUG: Will now open {0:s}".format(_url))
+        print("DEBUG: Will now open {0:s} .".format(_url))
 
         # Get the soup for the assembled url.
         browser = BeautifulSoup(_simple_get(_url), 'html.parser')
@@ -305,10 +305,10 @@ def _simple_get(url):
     # Safeguard opening the URL.
     with closing(get(url, stream=True)) as resp:
         if _is_good_response(resp):
-            print("INFO: Good response from "+url+".")
+            print("INFO: Good response from "+url+" .")
             return resp.content
         else:
-            raise RuntimeError("ERROR: Could not open "+url+".")
+            raise RuntimeError("ERROR: Could not open "+url+" .")
 
 def _is_good_response(resp):
     """ """
@@ -456,7 +456,7 @@ def _run_from_cli(args):
     try:
         scraper.connect()
     except:
-        print("ERROR: Could not connect to pseudomonas.com.")
+        print("ERROR: Could not connect to pseudomonas.com .")
         return 0
 
     # Run the query and serialize.
