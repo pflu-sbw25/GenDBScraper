@@ -1,21 +1,20 @@
 """ :module PseudomonasDotComScraper: Hosting the PseudomonasDotComScraper, an API for the https://www.pseudomonas.com database web interface. """
 
+from GenDBScraper.Utilities.json_utilities import JSONEncoder
+
 # 3rd party imports
 from bs4 import BeautifulSoup
 from collections import namedtuple
 from contextlib import closing
-import pandas
-from requests import get
-from requests.exceptions import RequestException
-import bs4
-import re
 from doi2bib import crossref
 from pubmed_lookup import Publication, PubMedLookup
+from requests import get
+from requests.exceptions import RequestException
 import json
 import os
+import pandas
+import re
 import tempfile
-import GenDBScraper
-from GenDBScraper.Utilities.json_utilities import JSONEncoder
 
 # Define the query datastructure.
 pdc_query = namedtuple('pdc_query',
