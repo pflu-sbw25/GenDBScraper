@@ -105,3 +105,4 @@ venv.bak/
 tags
 notebooks/
 .*.*.swp
+devenv/
