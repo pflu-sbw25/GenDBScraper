@@ -31,6 +31,23 @@ version = '.'.join(release.split('.')[:2])
 # Insert package path. NOTE: Must come *after* version parsing.
 sys.path.insert(0, os.path.abspath('./../GenDBScraper/'))
 
+# Mocks
+from unittest.mock import MagicMock, patch
+
+class Mock(MagicMock):
+    @classmethod
+    def __getattr__(cls, name):
+        return MagicMock()
+
+
+MOCK_MODULES = [
+                'bs4',
+                'doi2bib',
+                'pubmed_lookup',
+               ]
+
+
+sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 # -- General configuration ---------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
