@@ -233,7 +233,7 @@ class PseudomonasDotComScraper():
 
         """
 
-        return _deserialize(path)
+        return _deserialize(infile)
 
 def _serialize(path, obj):
     """ """
