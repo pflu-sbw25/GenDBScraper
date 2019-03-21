@@ -15,15 +15,14 @@ from TestUtilities.TestUtilities import _remove_test_files
 TestedClass = PseudomonasDotComScraper
 
 # 3rd party imports
-import unittest
+from bs4 import BeautifulSoup
+from subprocess import Popen
 import inspect
 import os, sys
 import pandas
+import re
 import shutil
-import bs4
-from bs4 import BeautifulSoup
-from pandas import DataFrame
-from subprocess import Popen
+import unittest
 
 class PseudomonasDotComScraperTest(unittest.TestCase):
     """ :class: Test class for the PseudomonasDotComScraper """
@@ -41,17 +40,17 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
 
         _remove_test_files(cls._static_test_files)
 
-    def setUp(self):
+    def setUp (self):
         """ Setup the test instance. """
 
         # Setup list of test files to be removed immediately after each test method.
         self._test_files = []
 
-    def tearDown(self):
+    def tearDown (self):
         """ Tear down the test instance. """
         _remove_test_files(self._test_files)
 
-    def test_default_constructor(self):
+    def test_default_constructor (self):
         """ Test the default class constructor."""
 
         # Instantiate.
@@ -63,10 +62,10 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         # Check default attribute values.
         self.assertIsNone(instance._PseudomonasDotComScraper__browser)
         self.assertEqual(instance._PseudomonasDotComScraper__pdc_url, 'https://www.pseudomonas.com')
-        self.assertIsInstance(instance._PseudomonasDotComScraper__query, pdc_query)
-        self.assertEqual(instance._PseudomonasDotComScraper__query.strain, 'sbw25')
+        self.assertIsInstance(instance._PseudomonasDotComScraper__query[0], pdc_query)
+        self.assertEqual(instance._PseudomonasDotComScraper__query[0].strain, 'sbw25')
 
-    def test_shaped_constructor_query_namedtuple(self):
+    def test_shaped_constructor_query_namedtuple (self):
         """ Test the shaped constructor (with arguments, query is a namedtuple)."""
 
         # Instantiate.
@@ -77,9 +76,9 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         self.assertIsInstance(instance, TestedClass)
 
         # Check member attribute.
-        self.assertEqual(instance._PseudomonasDotComScraper__query, query)
+        self.assertEqual(instance._PseudomonasDotComScraper__query, [query])
 
-    def test_shaped_constructor_query_dict(self):
+    def test_shaped_constructor_query_dict (self):
         """ Test the shaped constructor (with arguments, query is a dict)."""
 
         # Instantiate.
@@ -90,9 +89,9 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         self.assertIsInstance(instance, TestedClass)
 
         # Check member attribute.
-        self.assertEqual(instance._PseudomonasDotComScraper__query, pdc_query(strain='sbw25', feature='pflu0916'))
+        self.assertEqual(instance._PseudomonasDotComScraper__query, [pdc_query(strain='sbw25', feature='pflu0916')])
 
-    def test_query_setter_named_tuple(self):
+    def test_query_setter_named_tuple (self):
         """ Test that the parameter 'query' can be set as a pdc_query."""
 
         # Parameter to test.
@@ -104,10 +103,22 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         # Set value.
         instance.query = query
 
-        # Check without using property.
-        self.assertEqual(instance._PseudomonasDotComScraper__query, query)
+        # Check without using property. Query was internally converted to tuple.
+        self.assertEqual(instance._PseudomonasDotComScraper__query, [query])
 
-    def test_query_setter_dict(self):
+    def test_query_setter_list (self):
+        """ Test that the parameter 'query' can be set as a list of pdc_query."""
+
+        # Parameter to test.
+        queries = [pdc_query(strain='sbw25', feature='pflu{0:04d}'.format(f)) for f in range(15,18)]
+
+        # Instantiate.
+        instance = PseudomonasDotComScraper(query=queries)
+
+        # Check without using property.
+        self.assertEqual(instance._PseudomonasDotComScraper__query, queries)
+
+    def test_query_setter_dict (self):
         """ Test that the parameter 'query' can be set as a dict."""
 
         # Parameter to test.
@@ -120,9 +131,9 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         instance.query = query
 
         # Check without using property.
-        self.assertEqual(instance._PseudomonasDotComScraper__query, pdc_query(strain='sbw25', feature='pflu0916'))
+        self.assertEqual(instance._PseudomonasDotComScraper__query, [pdc_query(strain='sbw25', feature='pflu0916')])
 
-    def test_query_setter_exceptions(self):
+    def test_query_setter_exceptions (self):
         """ Test that passing wrong values to query setter raises. """
 
         # Wrong type
@@ -144,7 +155,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         query = pdc_query(strain=12)
         self.assertRaises(TypeError, TestedClass, query)
 
-    def test_query_getter(self):
+    def test_query_getter (self):
         """ Test the getter for query. """
 
         # Parameter to test.
@@ -154,9 +165,9 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         instance = TestedClass(query)
 
         # Get value.
-        self.assertEqual(instance.query, query)
+        self.assertEqual(instance.query, [query])
 
-    def test_connect(self):
+    def test_connect (self):
         """ Test the connect and connected logic. """
         # Instantiate the class.
         scraper = PseudomonasDotComScraper(query=pdc_query(strain='sbw25'))
@@ -169,7 +180,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         # Now it should be true.
         self.assertTrue(scraper.connected)
 
-    def test_connect_failure(self):
+    def test_connect_failure (self):
         """ Test exception upon connection failure. """
 
         # Instantiate the class.
@@ -180,7 +191,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         # Connect should bail out.
         self.assertRaises(ConnectionError, scraper.connect)
 
-    def test_connected_read_only(self):
+    def test_connected_read_only (self):
         """ Test that the connected status cannot be set. """
 
         # Instantiate the class.
@@ -189,7 +200,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         with self.assertRaises(AttributeError):
             scraper.connected=True
 
-    def test_query_failure_if_not_connected(self):
+    def test_query_failure_if_not_connected (self):
         """ Test that the query bails out if not connected to DB."""
 
         # Instantiate the class.
@@ -198,7 +209,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         # Run the query. This should fail.
         self.assertRaises(RuntimeError, scraper.run_query)
 
-    def test_run_query(self):
+    def test_run_query (self):
         """ Test a method. """
 
         # Instantiate.
@@ -213,6 +224,9 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         # Check rtype.
         self.assertIsInstance(results, dict)
 
+        # Check query key:
+        self.assertIn("sbw25__pflu0916", results.keys())
+
         # Check keys.
         for heading in ["Gene Feature Overview",
                         "Cross-References",
@@ -226,15 +240,16 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
                         "Functional Classifications Manually Assigned by PseudoCAP",
                         "Functional Predictions from Interpro",
                         ]:
-            self.assertIn(heading, results.keys())
-            self.assertIsInstance(results[heading], DataFrame)
+
+            self.assertIn(heading, results['sbw25__pflu0916'].keys())
+            self.assertIsInstance(results['sbw25__pflu0916'][heading], pandas.DataFrame)
 
         # Check content.
-        present_indices = results['Gene Feature Overview'].index
+        present_indices = results['sbw25__pflu0916']['Gene Feature Overview'].index
         for idx in ['Strain', 'Locus Tag', 'Name', 'Replicon', 'Genomic location']:
             self.assertIn(idx, present_indices)
 
-    def test_dict_to_pdc_query(self):
+    def test_dict_to_pdc_query (self):
         """ Test the conversion utility that returns a pdc_query (named_tuple) from a dict. """
 
         query_dict = {'strain' : 'sbw25', 'feature' : 'pflu0914', 'organism':None}
@@ -246,18 +261,28 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         self.assertEqual(query_pdc.feature, 'pflu0914')
         self.assertIsNone(query_pdc.organism)
 
-    def test_results_with_references(self):
+    def test_results_with_references (self):
         """ Run a query that returns non-empty references. """
 
+        # Setup the query.
         query = pdc_query(strain='UCBPP-PA14', feature='PA14_67210')
 
+        # Fetch results.
         scraper = PseudomonasDotComScraper(query=query)
         scraper.connect()
-        results = scraper.run_query()
+        results = scraper.run_query()['UCBPP-PA14__PA14_67210']['References']
 
-        print(results['References'])
+        # Check column names.
+        self.assertIn('citation', results.columns)
+        self.assertIn('pubmed_url', results.columns)
 
-    def test_pandas_references(self):
+        # Check first author.
+        citation = results.loc[0]['citation']
+        rx = re.compile('Allsopp\s')
+
+        self.assertIsNotNone(rx.match(citation))
+
+    def test_pandas_references (self):
         """ Test the references parser function."""
 
         soup = BeautifulSoup(_simple_get("https://www.pseudomonas.com/feature/show/?id=1661780&view=overview"), 'lxml')
@@ -266,7 +291,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
 
         print(references)
 
-    def test_bib_from_doi(self):
+    def test_bib_from_doi (self):
         """ Test the get_bib_from_doi utility. """
 
         doi = '10.1073/pnas.1700286114'
@@ -286,7 +311,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         for key in expected_keys:
             self.assertIn(key, present_keys)
 
-    def test_json_io(self):
+    def test_json_io (self):
         """ Test the IO capabilities based on the json format. """
 
         # Setup the query.
@@ -297,6 +322,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
 
         # Connect and run the query.
         scraper.connect()
+
         results = scraper.run_query()
 
         # Serialize.
@@ -311,6 +337,12 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
 
         # Check entity and keys.
         self.assertIsInstance(loaded_results, dict)
+        expected_query_key = 'UCBPP-PA14__PA14_67210'
+        self.assertIn(expected_query_key, loaded_results.keys())
+        self.assertIsInstance(loaded_results[expected_query_key], dict)
+
+        # Check keys in query results.
+        query_results = loaded_results['UCBPP-PA14__PA14_67210']
         expected_keys = ["Gene Feature Overview",
                         "Cross-References",
                         "Product",
@@ -323,10 +355,11 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
                         "Functional Classifications Manually Assigned by PseudoCAP",
                         "Functional Predictions from Interpro",
                         ]
-        present_keys = loaded_results.keys()
+        present_keys = query_results.keys()
+
         for xk in expected_keys:
             self.assertIn(xk, present_keys)
-            self.assertIsInstance(loaded_results[xk], pandas.DataFrame)
+            self.assertIsInstance(query_results[xk], pandas.DataFrame)
 
 
 if __name__ == "__main__":
