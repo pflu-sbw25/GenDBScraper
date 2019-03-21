@@ -168,7 +168,7 @@ class PseudomonasDotComScraper():
         results = dict()
 
         for query in self.query:
-            key = "{0:s}_{1:s}".format(query.strain, query.feature)
+            key = "{0:s}__{1:s}".format(query.strain, query.feature)
             results[key] = self._run_one_query(query)
 
         return results
@@ -182,14 +182,14 @@ class PseudomonasDotComScraper():
         """
 
         # Form http self.query string.
-        _feature = self.query.feature
+        _feature = query.feature
         if _feature is None:
             _feature = ''
 
         # Assemble the html query.
-        if self.query.strain is not None: # Searching for specific strain.
-            _url = self.__pdc_url+"/primarySequenceFeature/list?c1=name&v1={0:s}&e1=1&term1={1:s}&assembly=complete".format(_feature, self.query.strain)
-        elif self.query.organism is not None: # Searching for organism.
+        if query.strain is not None: # Searching for specific strain.
+            _url = self.__pdc_url+"/primarySequenceFeature/list?c1=name&v1={0:s}&e1=1&term1={1:s}&assembly=complete".format(_feature, query.strain)
+        elif query.organism is not None: # Searching for organism.
             _url = self.__pdc_url+"/primarySequenceFeature/list?c1=name&v1={0:s}&e1=1&term2={1:s}&assembly=complete".format(_feature, self.query.organism)
 
         # Debug info.
@@ -204,8 +204,8 @@ class PseudomonasDotComScraper():
 
         # Prepend base url.
         feature_link = self.__pdc_url+feature_link
+
         # Get the soup.
-        #browser = BeautifulSoup(_simple_get(feature_link), 'html.parser')
         browser = BeautifulSoup(_simple_get(feature_link), 'lxml')
 
         # Setup dict to store self.query results.
@@ -248,13 +248,7 @@ class PseudomonasDotComScraper():
         """
 
         if outfile is None:
-            # Setup the filename from query items.
-            if self.query.strain is not None:
-                major = self.query.strain
-            else:
-                major = self.query.organism
-            minor = self.query.feature
-            file_path = tempfile.mkstemp(prefix="{0:s}_{1:s}_".format(major, minor), suffix=".json")[1]
+            file_path = tempfile.mkstemp(prefix="pseudomonas_dot_com_query_", suffix=".json")[1]
 
         else:
             file_path = outfile
@@ -284,12 +278,15 @@ def _serialize(path, obj):
 def _deserialize(path):
     """ """
     """ Deserialize a json file (located at 'path') into a dictionary. Reconstruct pandas.DataFrames from loaded content. """
+
     with open(path, 'r') as fp:
         loaded = json.load(fp)
 
     ret = {}
-    for k,v in loaded.items():
-        ret[k] = pandas.read_json(v)
+    for query, result in loaded.items():
+        ret[query] = {}
+        for key, value in result.items():
+            ret[query][key] = pandas.read_json(value)
 
     return ret
 
@@ -303,7 +300,7 @@ def _simple_get(url):
     """
 
     # Safeguard opening the URL.
-    with closing(get(url, stream=True)) as resp:
+    with closing(get(url, stream=True, timeout=10)) as resp:
         if _is_good_response(resp):
             print("INFO: Good response from "+url+" .")
             return resp.content

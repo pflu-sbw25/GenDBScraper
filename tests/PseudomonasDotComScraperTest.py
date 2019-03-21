@@ -15,15 +15,14 @@ from TestUtilities.TestUtilities import _remove_test_files
 TestedClass = PseudomonasDotComScraper
 
 # 3rd party imports
-import unittest
+from bs4 import BeautifulSoup
+from subprocess import Popen
 import inspect
 import os, sys
 import pandas
+import re
 import shutil
-import bs4
-from bs4 import BeautifulSoup
-from pandas import DataFrame
-from subprocess import Popen
+import unittest
 
 class PseudomonasDotComScraperTest(unittest.TestCase):
     """ :class: Test class for the PseudomonasDotComScraper """
@@ -63,8 +62,8 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         # Check default attribute values.
         self.assertIsNone(instance._PseudomonasDotComScraper__browser)
         self.assertEqual(instance._PseudomonasDotComScraper__pdc_url, 'https://www.pseudomonas.com')
-        self.assertIsInstance(instance._PseudomonasDotComScraper__query, pdc_query)
-        self.assertEqual(instance._PseudomonasDotComScraper__query.strain, 'sbw25')
+        self.assertIsInstance(instance._PseudomonasDotComScraper__query[0], pdc_query)
+        self.assertEqual(instance._PseudomonasDotComScraper__query[0].strain, 'sbw25')
 
     def test_shaped_constructor_query_namedtuple (self):
         """ Test the shaped constructor (with arguments, query is a namedtuple)."""
@@ -226,7 +225,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         self.assertIsInstance(results, dict)
 
         # Check query key:
-        self.assertIn("sbw25_pflu0916", results.keys())
+        self.assertIn("sbw25__pflu0916", results.keys())
 
         # Check keys.
         for heading in ["Gene Feature Overview",
@@ -242,11 +241,11 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
                         "Functional Predictions from Interpro",
                         ]:
 
-            self.assertIn(heading, results['sbw25_pflu0916'].keys())
-            self.assertIsInstance(results['sbw25_pflu0916'][heading], DataFrame)
+            self.assertIn(heading, results['sbw25__pflu0916'].keys())
+            self.assertIsInstance(results['sbw25__pflu0916'][heading], pandas.DataFrame)
 
         # Check content.
-        present_indices = results['sbw25_pflu0916']['Gene Feature Overview'].index
+        present_indices = results['sbw25__pflu0916']['Gene Feature Overview'].index
         for idx in ['Strain', 'Locus Tag', 'Name', 'Replicon', 'Genomic location']:
             self.assertIn(idx, present_indices)
 
@@ -265,13 +264,23 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
     def test_results_with_references (self):
         """ Run a query that returns non-empty references. """
 
+        # Setup the query.
         query = pdc_query(strain='UCBPP-PA14', feature='PA14_67210')
 
+        # Fetch results.
         scraper = PseudomonasDotComScraper(query=query)
         scraper.connect()
-        results = scraper.run_query()
+        results = scraper.run_query()['UCBPP-PA14__PA14_67210']['References']
 
-        print(results['References'])
+        # Check column names.
+        self.assertIn('citation', results.columns)
+        self.assertIn('pubmed_url', results.columns)
+
+        # Check first author.
+        citation = results.loc[0]['citation']
+        rx = re.compile('Allsopp\s')
+
+        self.assertIsNotNone(rx.match(citation))
 
     def test_pandas_references (self):
         """ Test the references parser function."""
@@ -313,6 +322,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
 
         # Connect and run the query.
         scraper.connect()
+
         results = scraper.run_query()
 
         # Serialize.
@@ -327,6 +337,12 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
 
         # Check entity and keys.
         self.assertIsInstance(loaded_results, dict)
+        expected_query_key = 'UCBPP-PA14__PA14_67210'
+        self.assertIn(expected_query_key, loaded_results.keys())
+        self.assertIsInstance(loaded_results[expected_query_key], dict)
+
+        # Check keys in query results.
+        query_results = loaded_results['UCBPP-PA14__PA14_67210']
         expected_keys = ["Gene Feature Overview",
                         "Cross-References",
                         "Product",
@@ -339,10 +355,11 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
                         "Functional Classifications Manually Assigned by PseudoCAP",
                         "Functional Predictions from Interpro",
                         ]
-        present_keys = loaded_results.keys()
+        present_keys = query_results.keys()
+
         for xk in expected_keys:
             self.assertIn(xk, present_keys)
-            self.assertIsInstance(loaded_results[xk], pandas.DataFrame)
+            self.assertIsInstance(query_results[xk], pandas.DataFrame)
 
 
 if __name__ == "__main__":
