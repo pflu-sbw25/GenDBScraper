@@ -35,10 +35,11 @@ To download the latest snapshot as a zip file click here_.
 .. _here: https://github.com/pflu-sbw25/GenDBScraper/archive/master.zip
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: Contents:
 
-.. include:: include/refman.rst
+   include/refman.rst
+   include/notebooks/pdc_scraper_example.ipynb
 
 Indices and tables
 ==================

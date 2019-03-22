@@ -378,31 +378,14 @@ def _pandas_references(soup):
 
     # Loop over all <a> tags
     for i,a in enumerate(a_tags):
-        #pubmed_id_string = a.string
-
-        # Strip \t, \n, and spaces.
-        #pubmed_id = re.sub(pattern="[\t,\n,\s]", repl="", string=pubmed_id_string)
         # Get the link text.
         pubmed_link=a.get('href')
 
         citation = Publication(PubMedLookup(pubmed_link, '')).cite()
-
-        ## Append to storage container.
-
-
-        ## Get doi from pubmed link.
-        #doi =_get_doi_from_ncbi(pubmed_link)
-
-        ## Get bibliographic information from doi.
-        #bib = _get_bib_from_doi(doi)
-
         raw.append(dict(pubmed_url=pubmed_link, citation=citation))
 
-
     # Return as pandas.DataFrame.
-    df = pandas.DataFrame(raw)
-
-    return df
+    return pandas.DataFrame(raw)
 
 def _get_doi_from_ncbi(pubmed_link):
         """ Extract the DOI from a pubmed link. """
