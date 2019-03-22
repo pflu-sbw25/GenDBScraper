@@ -1,2 +1,5 @@
 alabaster
 sphinx
+ipykernel
+nbsphinx
+-r ../requirements.txt
