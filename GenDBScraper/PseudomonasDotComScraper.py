@@ -11,10 +11,14 @@ from pubmed_lookup import Publication, PubMedLookup
 from requests import get
 from requests.exceptions import RequestException
 import json
+import logging
 import os
 import pandas
 import re
 import tempfile
+
+# Configure logging.
+logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.INFO)
 
 # Define the query datastructure.
 pdc_query = namedtuple('pdc_query',
@@ -120,7 +124,7 @@ class PseudomonasDotComScraper():
                     v['organism'] = None
 
                 # Convert to pdc_query
-                print('INFO: Query dictionary passed to pseudomonas.com scraper will now be converted to a pdc_query object. See reference manual for more details.')
+                logging.info('Query dictionary passed to pseudomonas.com scraper will now be converted to a pdc_query object. See reference manual for more details.')
                 v = _dict_to_pdc_query(**v)
 
             # Check keywords are internally consistent.
@@ -193,7 +197,7 @@ class PseudomonasDotComScraper():
             _url = self.__pdc_url+"/primarySequenceFeature/list?c1=name&v1={0:s}&e1=1&term2={1:s}&assembly=complete".format(_feature, self.query.organism)
 
         # Debug info.
-        print("DEBUG: Will now open {0:s} .".format(_url))
+        logging.debug("Will now open {0:s} .".format(_url))
 
         # Get the soup for the assembled url.
         browser = BeautifulSoup(_simple_get(_url), 'html.parser')
@@ -302,7 +306,7 @@ def _simple_get(url):
     # Safeguard opening the URL.
     with closing(get(url, stream=True, timeout=10)) as resp:
         if _is_good_response(resp):
-            print("INFO: Good response from "+url+" .")
+            logging.info("Good response from %s.", url)
             return resp.content
         else:
             raise RuntimeError("ERROR: Could not open "+url+" .")
@@ -358,8 +362,7 @@ def _pandasDF_from_heading(soup, table_heading, index_column=0):
     try:
         df = pandas.read_html(table_ht, index_col=index_column)[0]
     except:
-        print("WARNING: No data found for '"+table_heading+"'. Will return empty pandas.DataFrame.")
-
+        logging.warning("No data found for %s. Will return empty pandas.DataFrame.", table_heading)
         df = pandas.DataFrame()
 
     return df
@@ -436,25 +439,25 @@ def _run_from_cli(args):
     try:
         scraper.connect()
     except:
-        print("ERROR: Could not connect to pseudomonas.com .")
+        logging.error("Could not connect to pseudomonas.com .")
         return 0
 
     # Run the query and serialize.
     try:
         results = scraper.run_query()
     except:
-        print("ERROR: Query failed.")
+        logging.error("Query failed.")
         return 0
 
     try:
         path = scraper.to_json(results, args.outfile)
     except:
-        print("ERROR: Could not write results to disk.")
+        logging.error("Could not write results to disk.")
         raise
         return 0
 
     # Message.
-    print("INFO: Query was successfull. Results stored in {0:s}.".format(path))
+    logging.info("Query was successfull. Results stored in %s.", path)
 
     del scraper
 
