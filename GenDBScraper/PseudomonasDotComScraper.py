@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 from collections import namedtuple
 from contextlib import closing
 from doi2bib import crossref
+from io import StringIO
 from pubmed_lookup import Publication, PubMedLookup
 from requests import get
 from requests.exceptions import RequestException
@@ -177,11 +178,10 @@ class PseudomonasDotComScraper():
 
         return results
 
-    def _run_one_query(self, query):
-        """ """
-        """ Workhorse function to run a query.
+    def _get_feature_url(self, query):
+        """ Get the base URL for the queried feature (gene).
 
-        :param query: Query object to submit.
+        :param query: Query object.
         :type  query: pdc_query
         """
 
@@ -206,14 +206,48 @@ class PseudomonasDotComScraper():
         if _feature is not '':
             feature_link = browser.find_all('a', string=re.compile(_feature.upper()))[0].get('href')
 
-        # Prepend base url.
-        feature_link = self.__pdc_url+feature_link
+        return self.__pdc_url + feature_link
 
-        # Get the soup.
-        browser = BeautifulSoup(_simple_get(feature_link), 'lxml')
+    def _run_one_query(self, query):
+        """ """
+        """ Workhorse function to run a query.
+
+        :param query: Query object to submit.
+        :type  query: pdc_query
+        """
 
         # Setup dict to store self.query results.
         panels = dict()
+        feature_url =  self._get_feature_url(query)
+
+        # Go through all panels and pull data.
+        self._get_overview(feature_url, panels)
+        self._get_sequences(feature_url, panels)
+        self._get_functions_pathways_go(feature_url, panels)
+        self._get_motifs(feature_url, panels)
+        self._get_operons(feature_url, panels)
+        self._get_transposon_insertions(feature_url, panels)
+        self._get_updates(feature_url, panels)
+        self._get_orthologs(feature_url, panels)
+
+        # All done, return.
+        return panels
+
+    def _get_overview(self, url, panels):
+        """ Parse the 'Overview' tab and extract the tables.
+
+        :param url:  The base URL feature.
+        :type  url: str
+
+        :param panels [in/out]: The datastructure into which the tables are stored.
+        :type  panel: dict
+
+        """
+        # Get overview data.
+        overview_url = url + "&view=overview"
+
+        # Get the soup.
+        browser = BeautifulSoup(_simple_get(overview_url), 'lxml')
 
         # Loop over headings and get table as pandas.pandas.DataFrame.
         panels["Gene Feature Overview"] = _pandasDF_from_heading(browser, "Gene Feature Overview", 0)
@@ -226,16 +260,224 @@ class PseudomonasDotComScraper():
 
         panels["References"] = _pandas_references(browser)
 
-        # Assemble url for functions (tab "Function/Pathways/GO")
-        function_url = feature_link + "&view=functions"
+    def _get_sequences(self, url, panels):
+        """ Parse the 'Sequences' tab and extract the tables.
+
+        :param url: The base URL of the feature.
+        :type  url: str
+
+        :param panels: The datastructure into which the tables are stored.
+        :type  panel: dict
+
+        """
+
+        sequence_url = url +  "&view=sequence"
+        browser = BeautifulSoup(_simple_get(sequence_url), 'html.parser')
+
+        panels['Sequence Data'] = _pandasDF_from_heading(browser, "Sequence Data", None)
+
+    def _get_functions_pathways_go(self, url, panels):
+        """ Parse the 'Function/Pathways/GO' tab and extract the tables.
+
+        :param url: The base URL of the feature.
+        :type  url: str
+
+        :param panels: The datastructure into which the tables are stored.
+        :type  panel: dict
+
+        """
+
+        # Get functions, pathways, GO
+        function_url = url + "&view=functions"
+
         browser = BeautifulSoup(_simple_get(function_url), 'html.parser')
 
         panels["Gene Ontology"] = _pandasDF_from_heading(browser,"Gene Ontology", None)
         panels["Functional Classifications Manually Assigned by PseudoCAP"] = _pandasDF_from_heading(browser,"Functional Classifications Manually Assigned by PseudoCAP", None)
         panels["Functional Predictions from Interpro"] = _pandasDF_from_heading(browser,"Functional Predictions from Interpro", None)
 
-        # Return.
-        return panels
+    def _get_motifs(self, url, panels):
+        """ Parse the 'Motifs' tab and extract the tables.
+
+        :param url: The base URL of the feature.
+        :type  url: str
+
+        :param panels: The datastructure into which the tables are stored.
+        :type  panel: dict
+
+        """
+
+        # Get motifs tab.
+        motifs_url = url + "&view=motifs"
+        browser = BeautifulSoup(_simple_get(motifs_url), 'html.parser')
+
+        panels["Motifs"] = None
+
+    def _get_operons(self, url, panels):
+        """ Parse the 'operons' tab and extract the tables.
+
+        :param url: The base URL of the feature.
+        :type  url: str
+
+        :param panels: The datastructure into which the tables are stored.
+        :type  panels: dict
+
+        """
+
+        # Get operons tab.
+        operons_url = url + "&view=operons"
+        soup = BeautifulSoup(_simple_get(operons_url), 'lxml')
+        table_heading = "Operons"
+
+        # Navigate to heading.
+        heading = soup.find('h3', string=re.compile(table_heading))
+
+        # Get content.
+        operons = heading.find_next_siblings('table')
+
+        # Setup empty dict to store results.
+        operons_dict = dict()
+
+        # Loop over operons.
+        for operon in operons:
+
+            operon_dict = dict()
+
+            try:
+                tmp = pandas.read_html(str(operon))
+            except:
+                logging.warning("No operon data found.")
+                break
+
+
+            name = operon.findChild(string=re.compile("Operon name"))
+            tabs = re.compile("\t*")
+            name = tabs.sub("", name)
+            name = name.split("\n")[2]
+
+            operon_dict['Name'] = name
+            operon_dict['Genes'] = tmp[1]
+
+            evidence = str(operon.find(string=re.compile('Evidence')).find_next('div').text)
+            evidence=re.compile("[\t\n\s\.]").sub("",evidence)
+            evidence = re.sub("\.","",evidence)
+            operon_dict['Evidence'] = evidence
+
+            references = operon.find_all(string=re.compile('PubMed ID'))
+            refs = []
+
+            for ref in references:
+                pubmed = ref.find_next_sibling('a')
+                pubmed_url = pubmed.get('href')
+                pubmed_id = str(pubmed.text)
+                pubmed_id = re.compile('[\t\n\s]').sub('',pubmed_id)
+
+                lookup = PubMedLookup(pubmed_id, '')
+                citation = Publication(lookup).cite()
+
+                refs.append(dict(pubmed_url=pubmed_url, citation=citation))
+            operon_dict['References'] = pandas.DataFrame(refs)
+
+            cross_references = str(operon.find(string=re.compile("Cross-References")).find_next('div').find_next('div').text)
+            cross_references=re.compile("[\t\n\s]").sub("", cross_references)
+            operon_dict['Cross-References'] = cross_references
+
+            operons_dict[name] = operon_dict
+
+        # Loop over headings and get table as pandas.pandas.DataFrame.
+        panels['Operons'] = operons_dict
+
+    def _get_transposon_insertions(self, url, panels):
+        """ Parse the 'transposons' tab and extract the tables.
+
+        :param url: The base URL of the feature.
+        :type  url: str
+
+        :param panels: The datastructure into which the tables are stored.
+        :type  panel: dict
+
+        """
+
+        # Get transposons tab.
+        transposons_url = url + "&view=transposons"
+        browser = BeautifulSoup(_simple_get(transposons_url), 'html.parser')
+
+        table_heading = "Transposon Insertions"
+
+        # Navigate to heading.
+        headings = browser.find_all('h3', string=re.compile(table_heading))
+        transposon_dict = dict()
+        for h in headings:
+            parent = h.parent
+            try:
+                td = pandas.read_html(str(parent))
+            except ValueError:
+                td = [pandas.DataFrame()]
+                logging.warning("No table found, will return empty DataFrame.")
+            key = h.get_text()
+            key = re.compile("[\n\t]").sub("", key)
+
+            transposon_dict[key] = td
+
+        panels[table_heading] = transposon_dict
+
+    def _get_updates(self, url, panels):
+        """ Parse the 'Updates' tab and extract the tables.
+
+        :param url: The base URL of the feature.
+        :type  url: str
+
+        :param panels: The datastructure into which the tables are stored.
+        :type  panel: dict
+
+        """
+
+        # Get updates tab.
+        updates_url = url + "&view=updates"
+        browser = BeautifulSoup(_simple_get(updates_url), 'html.parser')
+
+        heading = browser.find('h3', string=re.compile('Annotation Updates'))
+        annotation_table = pandas.read_html(str(heading.parent))
+
+        panels['Annotation Updates'] = annotation_table
+
+    def _get_orthologs(self, url, panels):
+        """ Parse the 'Orthologs' tab and extract the tables.
+
+        :param url: The base URL of the feature.
+        :type  url: str
+
+        :param panels: The datastructure into which the tables are stored.
+        :type  panel: dict
+
+        """
+
+        ###
+        # Orthologs are different in that they are queried from the pdc
+        # orthologs database. We construct the corresponding URL and pull
+        # the tab file directly.
+        # TODO: or should we pull the fasta?
+
+        # Get the pseudomonas.com id for this feature.
+        pdc_id = url.split('id=')[1]
+
+        # Construct the URL for the orthologs DB.
+        orthologs_url = '/'.join([self.__pdc_url, 'orthologs', 'list?format=tab&extension=tab&id={}'.format(pdc_id)])
+
+        # GET html. Bail out if none.
+        try:
+            request = get(orthologs_url)
+
+            # Buffer the data.
+            with StringIO(request.text) as stream:
+                df = pandas.read_csv(stream, sep='\t')
+                stream.close()
+
+        except:
+            logging.warning("No orthologs found. Will return empty DataFrame.")
+            df = pandas.DataFrame()
+
+        panels["Orthologs"] = df
 
     def to_json(self, results, outfile=None):
         """ Serialize results dictionary to json.
@@ -306,7 +548,7 @@ def _simple_get(url):
     # Safeguard opening the URL.
     with closing(get(url, stream=True, timeout=10)) as resp:
         if _is_good_response(resp):
-            logging.info("Good response from %s.", url)
+            logging.info("Connected to %s.", url)
             return resp.content
         else:
             raise RuntimeError("ERROR: Could not open "+url+" .")
@@ -463,6 +705,16 @@ def _run_from_cli(args):
 
     return 1
 
+def _cleanup_str(chars, string):
+    """ Replace all characters in chars in string by  "". """
+
+    patterns = []
+    for c in chars:
+        patterns.append(re.compile(c))
+
+
+    space = re.compile(" *")
+    tab = re.compile("\t*")
 if __name__ == "__main__":
 
     from argparse import ArgumentParser

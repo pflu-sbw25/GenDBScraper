@@ -20,4 +20,12 @@ def _remove_test_files(files):
         elif os.path.isdir(f):
             shutil.rmtree(f)
 
+def check_keys(test_class, expected_keys, dictionary):
+    """ Check that all expected keys are contained in the passed items. """
+
+    present_keys = dictionary.keys()
+
+    for xk in expected_keys:
+        test_class.assertIn(xk, present_keys)
+
 
