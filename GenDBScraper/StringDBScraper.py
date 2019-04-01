@@ -1,4 +1,4 @@
-""" :module StringsDBScraper: Hosting the StringsDBScraper, an API for the https://www.pseudomonas.com database web interface. """
+""" :module StringDBScraper: Hosting the StringDBScraper, an API for the https://www.pseudomonas.com database web interface. """
 
 from GenDBScraper.Utilities.json_utilities import JSONEncoder
 
@@ -27,7 +27,7 @@ pdc_query = namedtuple('pdc_query',
         defaults=(None, None, None),
         )
 
-class StringsDBScraper():
+class StringDBScraper():
     """  An API for the pseudomonas.com genome database using web scraping technology. """
 
     # Class constructor
@@ -35,13 +35,13 @@ class StringsDBScraper():
             query=None,
             ):
         """
-        StringsDBScraper constructor.
+        StringDBScraper constructor.
 
         :param query: The query to submit to the database.
         :type query: (pdc_query || dict)
 
-        :example: scraper = StringsDBScraper(query={'strain' : 'sbw25', 'feature' : 'pflu0916'})
-        :example: scraper = StringsDBScraper(query=pdc_query(strain='sbw25', feature='pflu0916'))
+        :example: scraper = StringDBScraper(query={'strain' : 'sbw25', 'feature' : 'pflu0916'})
+        :example: scraper = StringDBScraper(query=pdc_query(strain='sbw25', feature='pflu0916'))
 
         """
 
@@ -676,7 +676,7 @@ def _run_from_cli(args):
     query = pdc_query(args.strain, args.feature, args.organism)
 
     # Construct the Scraper.
-    scraper = StringsDBScraper(query)
+    scraper = StringDBScraper(query)
 
     try:
         scraper.connect()

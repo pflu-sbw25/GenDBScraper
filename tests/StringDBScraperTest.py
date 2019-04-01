@@ -1,8 +1,8 @@
-""" :module StringsDBScraperTest: Test module for StringsDBScraper."""
+""" :module StringDBScraperTest: Test module for StringDBScraper."""
 
 # Import class to be tested.
-from GenDBScraper.StringsDBScraper import StringsDBScraper
-from GenDBScraper.StringsDBScraper import pdc_query,\
+from GenDBScraper.StringDBScraper import StringDBScraper
+from GenDBScraper.StringDBScraper import pdc_query,\
                                                   _dict_to_pdc_query,\
                                                   _simple_get,\
                                                   _pandas_references,\
@@ -13,7 +13,7 @@ from TestUtilities.TestUtilities import _remove_test_files
 from TestUtilities.TestUtilities import check_keys
 
 # Alias for generic tests.
-TestedClass = StringsDBScraper
+TestedClass = StringDBScraper
 
 # 3rd party imports
 from bs4 import BeautifulSoup
@@ -32,7 +32,7 @@ def setup_scraper_complete():
     query = pdc_query(strain='UCBPP-PA14', feature='PA14_67210')
 
     # Fetch results.
-    scraper = StringsDBScraper(query=query)
+    scraper = StringDBScraper(query=query)
     scraper.connect()
 
     return scraper
@@ -44,14 +44,14 @@ def setup_scraper_incomplete():
     query = pdc_query(strain='sbw25', feature='pflu0916')
 
     # Fetch results.
-    scraper = StringsDBScraper(query=query)
+    scraper = StringDBScraper(query=query)
     scraper.connect()
 
     return scraper
 
 
-class StringsDBScraperTest(unittest.TestCase):
-    """ :class: Test class for the StringsDBScraper """
+class StringDBScraperTest(unittest.TestCase):
+    """ :class: Test class for the StringDBScraper """
 
     @classmethod
     def setUpClass(cls):
@@ -86,10 +86,10 @@ class StringsDBScraperTest(unittest.TestCase):
         self.assertIsInstance(instance, TestedClass)
 
         # Check default attribute values.
-        self.assertIsNone(instance._StringsDBScraper__browser)
-        self.assertEqual(instance._StringsDBScraper__pdc_url, 'https://www.pseudomonas.com')
-        self.assertIsInstance(instance._StringsDBScraper__query[0], pdc_query)
-        self.assertEqual(instance._StringsDBScraper__query[0].strain, 'sbw25')
+        self.assertIsNone(instance._StringDBScraper__browser)
+        self.assertEqual(instance._StringDBScraper__pdc_url, 'https://www.pseudomonas.com')
+        self.assertIsInstance(instance._StringDBScraper__query[0], pdc_query)
+        self.assertEqual(instance._StringDBScraper__query[0].strain, 'sbw25')
 
     def test_shaped_constructor_query_namedtuple (self):
         """ Test the shaped constructor (with arguments, query is a namedtuple)."""
@@ -102,7 +102,7 @@ class StringsDBScraperTest(unittest.TestCase):
         self.assertIsInstance(instance, TestedClass)
 
         # Check member attribute.
-        self.assertEqual(instance._StringsDBScraper__query, [query])
+        self.assertEqual(instance._StringDBScraper__query, [query])
 
     def test_shaped_constructor_query_dict (self):
         """ Test the shaped constructor (with arguments, query is a dict)."""
@@ -115,7 +115,7 @@ class StringsDBScraperTest(unittest.TestCase):
         self.assertIsInstance(instance, TestedClass)
 
         # Check member attribute.
-        self.assertEqual(instance._StringsDBScraper__query, [pdc_query(strain='sbw25', feature='pflu0916')])
+        self.assertEqual(instance._StringDBScraper__query, [pdc_query(strain='sbw25', feature='pflu0916')])
 
     def test_query_setter_named_tuple (self):
         """ Test that the parameter 'query' can be set as a pdc_query."""
@@ -130,7 +130,7 @@ class StringsDBScraperTest(unittest.TestCase):
         instance.query = query
 
         # Check without using property. Query was internally converted to tuple.
-        self.assertEqual(instance._StringsDBScraper__query, [query])
+        self.assertEqual(instance._StringDBScraper__query, [query])
 
     def test_query_setter_list (self):
         """ Test that the parameter 'query' can be set as a list of pdc_query."""
@@ -139,10 +139,10 @@ class StringsDBScraperTest(unittest.TestCase):
         queries = [pdc_query(strain='sbw25', feature='pflu{0:04d}'.format(f)) for f in range(15,18)]
 
         # Instantiate.
-        instance = StringsDBScraper(query=queries)
+        instance = StringDBScraper(query=queries)
 
         # Check without using property.
-        self.assertEqual(instance._StringsDBScraper__query, queries)
+        self.assertEqual(instance._StringDBScraper__query, queries)
 
     def test_query_setter_dict (self):
         """ Test that the parameter 'query' can be set as a dict."""
@@ -157,7 +157,7 @@ class StringsDBScraperTest(unittest.TestCase):
         instance.query = query
 
         # Check without using property.
-        self.assertEqual(instance._StringsDBScraper__query, [pdc_query(strain='sbw25', feature='pflu0916')])
+        self.assertEqual(instance._StringDBScraper__query, [pdc_query(strain='sbw25', feature='pflu0916')])
 
     def test_query_setter_exceptions (self):
         """ Test that passing wrong values to query setter raises. """
@@ -175,7 +175,7 @@ class StringsDBScraperTest(unittest.TestCase):
         self.assertRaises(KeyError, TestedClass, query)
 
         query = pdc_query(feature='pflu0916', organism='pseudomonas')
-        self.assertIsInstance(TestedClass(query), StringsDBScraper)
+        self.assertIsInstance(TestedClass(query), StringDBScraper)
 
         # Wrong typed values
         query = pdc_query(strain=12)
@@ -196,7 +196,7 @@ class StringsDBScraperTest(unittest.TestCase):
     def test_connect (self):
         """ Test the connect and connected logic. """
         # Instantiate the class.
-        scraper = StringsDBScraper(query=pdc_query(strain='sbw25'))
+        scraper = StringDBScraper(query=pdc_query(strain='sbw25'))
         # connected should be False.
         self.assertFalse(scraper.connected)
 
@@ -210,9 +210,9 @@ class StringsDBScraperTest(unittest.TestCase):
         """ Test exception upon connection failure. """
 
         # Instantiate the class.
-        scraper = StringsDBScraper(query=pdc_query(strain='sbw25'))
+        scraper = StringDBScraper(query=pdc_query(strain='sbw25'))
         # Mess up the url.
-        scraper._StringsDBScraper__pdc_url = "https://some.nonexisting.url"
+        scraper._StringDBScraper__pdc_url = "https://some.nonexisting.url"
 
         # Connect should bail out.
         self.assertRaises(ConnectionError, scraper.connect)
@@ -221,7 +221,7 @@ class StringsDBScraperTest(unittest.TestCase):
         """ Test that the connected status cannot be set. """
 
         # Instantiate the class.
-        scraper = StringsDBScraper(query=pdc_query(strain='sbw25'))
+        scraper = StringDBScraper(query=pdc_query(strain='sbw25'))
 
         with self.assertRaises(AttributeError):
             scraper.connected=True
@@ -230,7 +230,7 @@ class StringsDBScraperTest(unittest.TestCase):
         """ Test that the query bails out if not connected to DB."""
 
         # Instantiate the class.
-        scraper = StringsDBScraper(query=pdc_query(strain='sbw25'))
+        scraper = StringDBScraper(query=pdc_query(strain='sbw25'))
 
         # Run the query. This should fail.
         self.assertRaises(RuntimeError, scraper.run_query)
@@ -239,7 +239,7 @@ class StringsDBScraperTest(unittest.TestCase):
         """ Test a method. """
 
         # Instantiate.
-        scraper = StringsDBScraper(query={'strain':'sbw25', 'feature':'pflu0916'})
+        scraper = StringDBScraper(query={'strain':'sbw25', 'feature':'pflu0916'})
 
         # Connect.
         scraper.connect()
@@ -475,14 +475,14 @@ class StringsDBScraperTest(unittest.TestCase):
         query = pdc_query(strain='UCBPP-PA14', feature='PA14_67210')
 
         # Fetch results.
-        scraper = StringsDBScraper(query=query)
+        scraper = StringDBScraper(query=query)
         scraper.connect()
 
         # Setup the query.
         query = pdc_query(strain='UCBPP-PA14', feature='PA14_67210')
 
         # Fetch results.
-        scraper = StringsDBScraper(query=query)
+        scraper = StringDBScraper(query=query)
         scraper.connect()
         results = scraper.run_query()['UCBPP-PA14__PA14_67210']
 
@@ -514,7 +514,7 @@ class StringsDBScraperTest(unittest.TestCase):
         query = pdc_query(strain='UCBPP-PA14', feature='PA14_67210')
 
         # Fetch results.
-        scraper = StringsDBScraper(query=query)
+        scraper = StringDBScraper(query=query)
         scraper.connect()
         results = scraper.run_query()['UCBPP-PA14__PA14_67210']['References']
 
@@ -565,7 +565,7 @@ class StringsDBScraperTest(unittest.TestCase):
         query = pdc_query(strain='UCBPP-PA14', feature='PA14_67210')
 
         # Setup the scraper.
-        scraper = StringsDBScraper(query=query)
+        scraper = StringDBScraper(query=query)
 
         # Connect and run the query.
         scraper.connect()
