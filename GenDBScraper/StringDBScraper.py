@@ -1,4 +1,4 @@
-""" :module StringDBScraper: Hosting the StringDBScraper, an API for the https://www.pseudomonas.com database web interface. """
+""" :module StringDBScraper: Hosting the StringDBScraper, an API for the https://string-db.org database web interface. """
 
 from GenDBScraper.RESTScraper import RESTScraper
 from GenDBScraper.Utilities import web_utilities
@@ -38,7 +38,7 @@ class StringDBScraper(RESTScraper):
         """
 
         # Base class initialization.
-        base_url = "https://string-db.org"
+        base_url = "http://string-db.org"
         super().__init__(base_url)
 
         self.query = query
