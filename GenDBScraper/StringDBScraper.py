@@ -1,16 +1,13 @@
 """ :module StringDBScraper: Hosting the StringDBScraper, an API for the https://www.pseudomonas.com database web interface. """
 
-from GenDBScraper.Utilities.json_utilities import JSONEncoder
+from GenDBScraper.RESTScraper import RESTScraper
+from GenDBScraper.Utilities import web_utilities
 
 # 3rd party imports
-from bs4 import BeautifulSoup
 from collections import namedtuple
-from contextlib import closing
 from doi2bib import crossref
 from io import StringIO
 from pubmed_lookup import Publication, PubMedLookup
-from requests import get
-from requests.exceptions import RequestException
 import json
 import logging
 import os
@@ -22,45 +19,29 @@ import tempfile
 logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.INFO)
 
 # Define the query datastructure.
-pdc_query = namedtuple('pdc_query',
-        field_names=('strain', 'feature', 'organism'),
-        defaults=(None, None, None),
+stringdb_query = namedtuple(
+        'stringdb_query',
+        field_names=('taxonId', 'features'),
+        defaults=('216595', []),
         )
 
-class StringDBScraper():
-    """  An API for the pseudomonas.com genome database using web scraping technology. """
+class StringDBScraper(RESTScraper):
+    """  An API for the string-db.org protein interaction database. """
 
     # Class constructor
-    def __init__(self,
-            query=None,
-            ):
+    def __init__(self, query=None):
         """
         StringDBScraper constructor.
 
-        :param query: The query to submit to the database.
-        :type query: (pdc_query || dict)
-
-        :example: scraper = StringDBScraper(query={'strain' : 'sbw25', 'feature' : 'pflu0916'})
-        :example: scraper = StringDBScraper(query=pdc_query(strain='sbw25', feature='pflu0916'))
-
+        :param query: The query to submit to string-db.org
+        :type  query: (dict |
         """
 
         # Base class initialization.
-        #super(<+ClassName+>).__init__(<+base_class_args+>)
+        base_url = "https://string-db.org"
+        super().__init__(base_url)
 
-        # Initialize all variables.
-        self.__query = None
-        self.__pdc_url = 'https://www.pseudomonas.com'
-        self.__browser = None
-        self.__connected = False
-
-        # Set attributes via setter.
         self.query = query
-
-    # Attribute accessors
-    @property
-    def connected(self):
-        return self.__connected
 
     @property
     def query(self):
@@ -79,77 +60,72 @@ class StringDBScraper():
         """ Set the query attribute.
 
         :param val: The value to set.
-        :type  val: (pdc_query | dict)
+        :type  val: (stringdb_query | dict)
 
-        :raises KeyError: Both 'strain' and 'organism' are provided.
         """
 
         # Checks
         if val is None:
-            val = [pdc_query(strain='sbw25')]
+            val = stringdb_query(taxonId=None, features=[])
 
+        exc = TypeError("The parameter 'query' must be a dict or stringdb_query. Examples: query={'taxonId' : '216595', 'features'=['pflu0916']}; query=straindb_query(taxonId='216595', features['pflu0916', 'pflu0917']).")
 
-        exc = TypeError("The parameter 'query' must be a dict or pdc_query or a list, tuple, or set of queries. Examples: query={'strain' : 'sbw25', 'feature'='pflu0916'}; query=pdc_query(strain='sbw25', feature='pflu0916') or query=[pdc_query(strain='sbw25', feature='pflu0916'), pdc_query(strain='sbw25', feature='pflu0917')].")
+        if not isinstance(val, (dict, stringdb_query)):
+            raise exc
 
-        if not isinstance(val, list):
-            if not (isinstance(val, dict) or isinstance(val, pdc_query)):
-                raise exc
-            else:
-                val = [val]
+        # Check keys if dict.
+        if isinstance(val, dict):
+            # Only these are acceptable query keywords.
+            accepted_keys = ('taxonId', 'features')
+            present_keys = val.keys()
+            for k in present_keys:
+                if not k in accepted_keys:
+                    raise KeyError("Only {0:s} are acceptable keys.".format(",".join(accepted_keys)))
 
-        for i,v in enumerate(val):
-            if isinstance(v, dict):
-                pass
-            elif isinstance(v, pdc_query):
-                pass
-            else:
-                raise exc
+            # Complete keywords.
+            if not 'taxonId' in val.keys():
+                val['taxonId'] = None
+            if not isinstance(val['taxonId'], (str,int)):
+                raise TypeError("taxonId must be a valid NCBI taxonId (str or int).")
+            if not 'features' in val.keys():
+                raise KeyError("You must specify a list of genes or products ('features').")
 
-        # Iterate over all queries.
-        for i,v in enumerate(val):
-            # Check keys if dict.
-            if isinstance(v, dict):
-                # Only these are acceptable query keywords.
-                accepted_keys = ('strain', 'feature', 'organism')
-                present_keys = v.keys()
-                for k in present_keys:
-                    if not k in accepted_keys:
-                        raise KeyError("Only 'strain', 'feature', and 'organism' are acceptable keys.)")
+            # Convert to stringdb_query
+            logging.info('Query dictionary passed to string-db scraper will now be converted to a stringdb_query object. See reference manual for more details.')
 
-                # Complete keywords.
-                if not 'strain' in v.keys():
-                    v['strain'] = None
-                if not 'feature' in v.keys():
-                    v['feature'] = None
-                if not 'organism' in v.keys():
-                    v['organism'] = None
-
-                # Convert to pdc_query
-                logging.info('Query dictionary passed to pseudomonas.com scraper will now be converted to a pdc_query object. See reference manual for more details.')
-                v = _dict_to_pdc_query(**v)
-
-            # Check keywords are internally consistent.
-            if v.organism is not None and v.strain is not None:
-                raise KeyError("Invalid combination of query keywords: 'organism' must not be combined with 'strain'.")
-
-            # Check all values are strings or None.
-            for vv in v[:]:
-                if not (isinstance(vv, str) or vv is None):
-                    raise TypeError("All values in the query must be of type str.")
-            # Reset checked item.
-            val[i] = v
+            val = stringdb_query(taxonId=val['taxonId'], features=val['features'])
 
         self.__query = val
 
-    def connect(self):
-        """ Connect to the database. """
-        try:
-            self.__browser = BeautifulSoup(_simple_get(self.__pdc_url), 'html.parser')
-        except:
-            self.__connected = False
-            raise ConnectionError("Connecting to {0:s} failed. Make sure the URL is set correctly and is reachable.")
+    def resolve_id(self, **kwargs):
+        """ Resolve the given identifier(s) to string-db.org's own identifiers.
 
-        self.__connected = True
+        :param limit: (Optional): Limit the number of matches per query identifier (best matches come first). Default: limit=1
+        :type  limit: int
+
+        """
+        """ Taken from  http://string-db.org/cgi/help.pl#Mapping-identifiers """
+
+        method = "get_string_ids"
+        query_url = "/".join([self.base_url, 'api', 'json', method])
+
+        data = dict(
+                identifiers="\r".join(self.query.features),
+                species    =self.query.taxonId if self.query.taxonId is not None else "",
+                limit      =1 if not "limit" in kwargs.keys() else limit,
+                echo_query =1,
+                caller_identity="https://gendbscraper.readthedocs.io",
+                )
+
+        # Get the response from post.
+        response = web_utilities.guarded_post(query_url, data)
+
+        ret = pandas.DataFrame(response.json())
+        ret.index = ret['queryItem']
+        del ret['queryItem']
+
+        # Re-index.
+        return ret.reindex(columns=['queryIndex', 'preferredName', 'stringId', 'ncbiTaxonId', 'taxonName', 'annotation'])
 
     def run_query(self, query=None):
         """ Run a query on pseudomonas.com
@@ -200,7 +176,7 @@ class StringDBScraper():
         logging.debug("Will now open {0:s} .".format(_url))
 
         # Get the soup for the assembled url.
-        browser = BeautifulSoup(_simple_get(_url), 'html.parser')
+        browser = BeautifulSoup(_guarded_get(_url), 'html.parser')
 
         # If we're looking for a unique feature.
         if _feature is not '':
@@ -247,7 +223,7 @@ class StringDBScraper():
         overview_url = url + "&view=overview"
 
         # Get the soup.
-        browser = BeautifulSoup(_simple_get(overview_url), 'lxml')
+        browser = BeautifulSoup(_guarded_get(overview_url), 'lxml')
 
         # Loop over headings and get table as pandas.pandas.DataFrame.
         panels["Gene Feature Overview"] = _pandasDF_from_heading(browser, "Gene Feature Overview", 0)
@@ -272,7 +248,7 @@ class StringDBScraper():
         """
 
         sequence_url = url +  "&view=sequence"
-        browser = BeautifulSoup(_simple_get(sequence_url), 'html.parser')
+        browser = BeautifulSoup(_guarded_get(sequence_url), 'html.parser')
 
         panels['Sequence Data'] = _pandasDF_from_heading(browser, "Sequence Data", None)
 
@@ -290,7 +266,7 @@ class StringDBScraper():
         # Get functions, pathways, GO
         function_url = url + "&view=functions"
 
-        browser = BeautifulSoup(_simple_get(function_url), 'html.parser')
+        browser = BeautifulSoup(_guarded_get(function_url), 'html.parser')
 
         panels["Gene Ontology"] = _pandasDF_from_heading(browser,"Gene Ontology", None)
         panels["Functional Classifications Manually Assigned by PseudoCAP"] = _pandasDF_from_heading(browser,"Functional Classifications Manually Assigned by PseudoCAP", None)
@@ -309,7 +285,7 @@ class StringDBScraper():
 
         # Get motifs tab.
         motifs_url = url + "&view=motifs"
-        browser = BeautifulSoup(_simple_get(motifs_url), 'html.parser')
+        browser = BeautifulSoup(_guarded_get(motifs_url), 'html.parser')
 
         panels["Motifs"] = None
 
@@ -326,7 +302,7 @@ class StringDBScraper():
 
         # Get operons tab.
         operons_url = url + "&view=operons"
-        soup = BeautifulSoup(_simple_get(operons_url), 'lxml')
+        soup = BeautifulSoup(_guarded_get(operons_url), 'lxml')
         table_heading = "Operons"
 
         # Navigate to heading.
@@ -400,7 +376,7 @@ class StringDBScraper():
 
         # Get transposons tab.
         transposons_url = url + "&view=transposons"
-        browser = BeautifulSoup(_simple_get(transposons_url), 'html.parser')
+        browser = BeautifulSoup(_guarded_get(transposons_url), 'html.parser')
 
         table_heading = "Transposon Insertions"
 
@@ -434,7 +410,7 @@ class StringDBScraper():
 
         # Get updates tab.
         updates_url = url + "&view=updates"
-        browser = BeautifulSoup(_simple_get(updates_url), 'html.parser')
+        browser = BeautifulSoup(_guarded_get(updates_url), 'html.parser')
 
         heading = browser.find('h3', string=re.compile('Annotation Updates'))
         annotation_table = pandas.read_html(str(heading.parent))
@@ -536,7 +512,7 @@ def _deserialize(path):
 
     return ret
 
-def _simple_get(url):
+def _guarded_get(url):
     """ """
     """ Get content of passed URL to pass on to BeautifulSoup.
 
@@ -636,7 +612,7 @@ def _get_doi_from_ncbi(pubmed_link):
         """ Extract the DOI from a pubmed link. """
 
         if (pubmed_link != ''):
-            doi_soup = BeautifulSoup(_simple_get(pubmed_link), 'lxml')
+            doi_soup = BeautifulSoup(_guarded_get(pubmed_link), 'lxml')
         line = doi_soup.find(string=re.compile("DOI")).find_parent().find_parent()
         a = line.find('a', string=re.compile('10\.[0-9]*\/'))
         doi_string = a.text

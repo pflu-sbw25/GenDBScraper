@@ -2,9 +2,9 @@
 
 # Import class to be tested.
 from GenDBScraper.PseudomonasDotComScraper import PseudomonasDotComScraper
+from GenDBScraper.Utilities.web_utilities import guarded_get
 from GenDBScraper.PseudomonasDotComScraper import pdc_query,\
                                                   _dict_to_pdc_query,\
-                                                  _simple_get,\
                                                   _pandas_references,\
                                                   _get_bib_from_doi
 
@@ -531,7 +531,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
     def test_pandas_references (self):
         """ Test the references parser function."""
 
-        soup = BeautifulSoup(_simple_get("https://www.pseudomonas.com/feature/show/?id=1661780&view=overview"), 'lxml')
+        soup = BeautifulSoup(guarded_get("https://www.pseudomonas.com/feature/show/?id=1661780&view=overview"), 'lxml')
 
         references = _pandas_references(soup)
 

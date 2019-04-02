@@ -1,16 +1,14 @@
 """ :module PseudomonasDotComScraper: Hosting the PseudomonasDotComScraper, an API for the https://www.pseudomonas.com database web interface. """
 
 from GenDBScraper.Utilities.json_utilities import JSONEncoder
+from GenDBScraper.Utilities.web_utilities import guarded_get, is_good_response
 
 # 3rd party imports
 from bs4 import BeautifulSoup
 from collections import namedtuple
-from contextlib import closing
 from doi2bib import crossref
 from io import StringIO
 from pubmed_lookup import Publication, PubMedLookup
-from requests import get
-from requests.exceptions import RequestException
 import json
 import logging
 import os
@@ -144,7 +142,7 @@ class PseudomonasDotComScraper():
     def connect(self):
         """ Connect to the database. """
         try:
-            self.__browser = BeautifulSoup(_simple_get(self.__pdc_url), 'html.parser')
+            self.__browser = BeautifulSoup(guarded_get(self.__pdc_url), 'html.parser')
         except:
             self.__connected = False
             raise ConnectionError("Connecting to {0:s} failed. Make sure the URL is set correctly and is reachable.")
@@ -200,7 +198,7 @@ class PseudomonasDotComScraper():
         logging.debug("Will now open {0:s} .".format(_url))
 
         # Get the soup for the assembled url.
-        browser = BeautifulSoup(_simple_get(_url), 'html.parser')
+        browser = BeautifulSoup(guarded_get(_url), 'html.parser')
 
         # If we're looking for a unique feature.
         if _feature is not '':
@@ -247,7 +245,7 @@ class PseudomonasDotComScraper():
         overview_url = url + "&view=overview"
 
         # Get the soup.
-        browser = BeautifulSoup(_simple_get(overview_url), 'lxml')
+        browser = BeautifulSoup(guarded_get(overview_url), 'lxml')
 
         # Loop over headings and get table as pandas.pandas.DataFrame.
         panels["Gene Feature Overview"] = _pandasDF_from_heading(browser, "Gene Feature Overview", 0)
@@ -272,7 +270,7 @@ class PseudomonasDotComScraper():
         """
 
         sequence_url = url +  "&view=sequence"
-        browser = BeautifulSoup(_simple_get(sequence_url), 'html.parser')
+        browser = BeautifulSoup(guarded_get(sequence_url), 'html.parser')
 
         panels['Sequence Data'] = _pandasDF_from_heading(browser, "Sequence Data", None)
 
@@ -290,7 +288,7 @@ class PseudomonasDotComScraper():
         # Get functions, pathways, GO
         function_url = url + "&view=functions"
 
-        browser = BeautifulSoup(_simple_get(function_url), 'html.parser')
+        browser = BeautifulSoup(guarded_get(function_url), 'html.parser')
 
         panels["Gene Ontology"] = _pandasDF_from_heading(browser,"Gene Ontology", None)
         panels["Functional Classifications Manually Assigned by PseudoCAP"] = _pandasDF_from_heading(browser,"Functional Classifications Manually Assigned by PseudoCAP", None)
@@ -309,7 +307,7 @@ class PseudomonasDotComScraper():
 
         # Get motifs tab.
         motifs_url = url + "&view=motifs"
-        browser = BeautifulSoup(_simple_get(motifs_url), 'html.parser')
+        browser = BeautifulSoup(guarded_get(motifs_url), 'html.parser')
 
         panels["Motifs"] = None
 
@@ -326,7 +324,7 @@ class PseudomonasDotComScraper():
 
         # Get operons tab.
         operons_url = url + "&view=operons"
-        soup = BeautifulSoup(_simple_get(operons_url), 'lxml')
+        soup = BeautifulSoup(guarded_get(operons_url), 'lxml')
         table_heading = "Operons"
 
         # Navigate to heading.
@@ -400,7 +398,7 @@ class PseudomonasDotComScraper():
 
         # Get transposons tab.
         transposons_url = url + "&view=transposons"
-        browser = BeautifulSoup(_simple_get(transposons_url), 'html.parser')
+        browser = BeautifulSoup(guarded_get(transposons_url), 'html.parser')
 
         table_heading = "Transposon Insertions"
 
@@ -434,7 +432,7 @@ class PseudomonasDotComScraper():
 
         # Get updates tab.
         updates_url = url + "&view=updates"
-        browser = BeautifulSoup(_simple_get(updates_url), 'html.parser')
+        browser = BeautifulSoup(guarded_get(updates_url), 'html.parser')
 
         heading = browser.find('h3', string=re.compile('Annotation Updates'))
         annotation_table = pandas.read_html(str(heading.parent))
@@ -536,37 +534,6 @@ def _deserialize(path):
 
     return ret
 
-def _simple_get(url):
-    """ """
-    """ Get content of passed URL to pass on to BeautifulSoup.
-
-    :param url: The URL to parse.
-    :type  url: str
-
-    """
-
-    # Safeguard opening the URL.
-    with closing(get(url, stream=True, timeout=10)) as resp:
-        if _is_good_response(resp):
-            logging.info("Connected to %s.", url)
-            return resp.content
-        else:
-            raise RuntimeError("ERROR: Could not open "+url+" .")
-
-def _is_good_response(resp):
-    """ """
-    """ Returns True if the response seems to be HTML, False otherwise.
-
-    :param resp: The response to validate.
-    :type  resp: http response as returned from contextlib.closing
-
-    """
-
-    content_type = resp.headers['Content-Type'].lower()
-    return (resp.status_code == 200
-            and content_type is not None
-            and content_type.find('html') > -1)
-
 def _dict_to_pdc_query(**kwargs):
     """ """
     """
@@ -636,7 +603,7 @@ def _get_doi_from_ncbi(pubmed_link):
         """ Extract the DOI from a pubmed link. """
 
         if (pubmed_link != ''):
-            doi_soup = BeautifulSoup(_simple_get(pubmed_link), 'lxml')
+            doi_soup = BeautifulSoup(guarded_get(pubmed_link), 'lxml')
         line = doi_soup.find(string=re.compile("DOI")).find_parent().find_parent()
         a = line.find('a', string=re.compile('10\.[0-9]*\/'))
         doi_string = a.text

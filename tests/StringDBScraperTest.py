@@ -1,12 +1,9 @@
 """ :module StringDBScraperTest: Test module for StringDBScraper."""
 
 # Import class to be tested.
-from GenDBScraper.StringDBScraper import StringDBScraper
-from GenDBScraper.StringDBScraper import pdc_query,\
-                                                  _dict_to_pdc_query,\
-                                                  _simple_get,\
-                                                  _pandas_references,\
-                                                  _get_bib_from_doi
+from GenDBScraper.StringDBScraper import StringDBScraper, stringdb_query
+from GenDBScraper.RESTScraper import RESTScraper
+from GenDBScraper.Utilities import web_utilities
 
 # Utilities
 from TestUtilities.TestUtilities import _remove_test_files
@@ -16,39 +13,12 @@ from TestUtilities.TestUtilities import check_keys
 TestedClass = StringDBScraper
 
 # 3rd party imports
-from bs4 import BeautifulSoup
-from subprocess import Popen
 import inspect
 import os, sys
 import pandas
 import re
 import shutil
 import unittest
-
-def setup_scraper_complete():
-    """ Construct a default scraper for testing. """
-
-    # Setup the query.
-    query = pdc_query(strain='UCBPP-PA14', feature='PA14_67210')
-
-    # Fetch results.
-    scraper = StringDBScraper(query=query)
-    scraper.connect()
-
-    return scraper
-
-def setup_scraper_incomplete():
-    """ Construct a default scraper for testing. """
-
-    # Setup the query.
-    query = pdc_query(strain='sbw25', feature='pflu0916')
-
-    # Fetch results.
-    scraper = StringDBScraper(query=query)
-    scraper.connect()
-
-    return scraper
-
 
 class StringDBScraperTest(unittest.TestCase):
     """ :class: Test class for the StringDBScraper """
@@ -84,13 +54,73 @@ class StringDBScraperTest(unittest.TestCase):
 
         # Check correct class provenance.
         self.assertIsInstance(instance, TestedClass)
+        self.assertIsInstance(instance, RESTScraper)
 
         # Check default attribute values.
-        self.assertIsNone(instance._StringDBScraper__browser)
-        self.assertEqual(instance._StringDBScraper__pdc_url, 'https://www.pseudomonas.com')
-        self.assertIsInstance(instance._StringDBScraper__query[0], pdc_query)
-        self.assertEqual(instance._StringDBScraper__query[0].strain, 'sbw25')
+        self.assertEqual(instance.base_url, 'http://string-db.org')
+        self.assertEqual(instance.query.taxonId, None)
+        self.assertEqual(instance.query.features, [])
 
+    def test_shaped_constructor (self):
+        """ Test the shaped class constructor."""
+
+        # Instantiate.
+        instance = TestedClass(query=stringdb_query(taxonId='216595', features=['pflu5436', 'DnaA']))
+
+        # Check correct class provenance.
+        self.assertIsInstance(instance, TestedClass)
+        self.assertIsInstance(instance, RESTScraper)
+
+        # Check default attribute values.
+        self.assertEqual(instance.base_url, 'http://string-db.org')
+        self.assertEqual(instance.query.taxonId, '216595')
+        self.assertEqual(instance.query.features, ['pflu5436', 'DnaA'])
+
+    def test_shaped_constructor_dict (self):
+        """ Test the shaped class constructor with a query dict."""
+
+        # Instantiate.
+        instance = TestedClass(query=dict(taxonId='216595', features=['pflu5436', 'DnaA']))
+
+        # Check correct class provenance.
+        self.assertIsInstance(instance, TestedClass)
+        self.assertIsInstance(instance, RESTScraper)
+
+        # Check default attribute values.
+        self.assertEqual(instance.base_url, 'http://string-db.org')
+        self.assertEqual(instance.query.taxonId, '216595')
+        self.assertEqual(instance.query.features, ['pflu5436', 'DnaA'])
+
+    def test_connection(self):
+        """ Test connecting to the DB. """
+
+        # Instantiate.
+        instance = TestedClass(query=stringdb_query("216595", ['pflu4385', 'pflu0325']))
+
+        # We're not connected.
+        self.assertFalse(instance.connected)
+
+        # Connect.
+        instance.connect()
+
+        # Now we're connected.
+        self.assertTrue(instance.connected)
+
+    def test_resolve_id (self):
+        """ Test the identifier resolution API. """
+        db = StringDBScraper(query=stringdb_query("216595", ['pflu_4385', 'pflu_0381']))
+        db.connect()
+
+        # Get pandas DataFrame of resolved ids.
+        resolution = db.resolve_id()
+
+        print(resolution)
+        # Check type and content of returned frame.
+        self.assertIsInstance(resolution, pandas.DataFrame)
+        self.assertEqual( resolution.index.tolist(), db.query.features)
+        self.assertEqual( resolution['preferredName'].loc[db.query.features[0]], db.query.features[0].upper())
+
+def NoTest():
     def test_shaped_constructor_query_namedtuple (self):
         """ Test the shaped constructor (with arguments, query is a namedtuple)."""
 
@@ -531,7 +561,7 @@ class StringDBScraperTest(unittest.TestCase):
     def test_pandas_references (self):
         """ Test the references parser function."""
 
-        soup = BeautifulSoup(_simple_get("https://www.pseudomonas.com/feature/show/?id=1661780&view=overview"), 'lxml')
+        soup = BeautifulSoup(guarded_get("https://www.pseudomonas.com/feature/show/?id=1661780&view=overview"), 'lxml')
 
         references = _pandas_references(soup)
 
