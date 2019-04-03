@@ -248,13 +248,13 @@ class PseudomonasDotComScraper():
         browser = BeautifulSoup(guarded_get(overview_url), 'lxml')
 
         # Loop over headings and get table as pandas.pandas.DataFrame.
-        panels["Gene Feature Overview"] = _pandasDF_from_heading(browser, "Gene Feature Overview", 0)
-        panels["Cross-References"] = _pandasDF_from_heading(browser, "Cross-References", 0)
-        panels["Product"] = _pandasDF_from_heading(browser, "Product", 0)
-        panels["Subcellular localization"] = _pandasDF_from_heading(browser, "Subcellular localization",  0)
-        panels["Pathogen Association Analysis"] = _pandasDF_from_heading(browser, "Pathogen Association Analysis", 0)
-        panels["Orthologs/Comparative Genomics"] = _pandasDF_from_heading(browser, "Orthologs/Comparative Genomics", 0 )
-        panels["Interactions"] = _pandasDF_from_heading(browser, "Interactions", 0)
+        panels["Gene Feature Overview"] = _pandasDF_from_heading(browser, "Gene Feature Overview", None)
+        panels["Cross-References"] = _pandasDF_from_heading(browser, "Cross-References", None)
+        panels["Product"] = _pandasDF_from_heading(browser, "Product", None)
+        panels["Subcellular localization"] = _pandasDF_from_heading(browser, "Subcellular localization", None)
+        panels["Pathogen Association Analysis"] = _pandasDF_from_heading(browser, "Pathogen Association Analysis", None)
+        panels["Orthologs/Comparative Genomics"] = _pandasDF_from_heading(browser, "Orthologs/Comparative Genomics", None)
+        panels["Interactions"] = _pandasDF_from_heading(browser, "Interactions", None)
 
         panels["References"] = _pandas_references(browser)
 

@@ -276,7 +276,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         check_keys(self, expected_keys, results["sbw25__pflu0916"])
 
         # Check content.
-        present_indices = results['sbw25__pflu0916']['Gene Feature Overview'].index
+        present_indices = results['sbw25__pflu0916']['Gene Feature Overview'][1]
         for idx in ['Strain', 'Locus Tag', 'Name', 'Replicon', 'Genomic location']:
             self.assertIn(idx, present_indices)
 
@@ -309,7 +309,6 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
                          "Interactions",
                          "References",
                          ]
-
         check_keys(self, expected_keys, panels)
 
     def test_get_sequence(self):
