@@ -312,6 +312,12 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
                          ]
         check_keys(self, expected_keys, panels)
 
+        # Check hyperlinks.
+        cross_references = panels["Cross-References"]
+        refseq = cross_references.loc["RefSeq"].iloc[0]
+
+        print(refseq)
+
     def test_get_sequence(self):
         """ Test the scraping of the "Sequences" tab on pseudomonas.com."""
 
@@ -323,8 +329,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         scraper._get_sequences("https://www.pseudomonas.com/feature/show/?id=1661780", panels)
 
         # Check keys.
-        expected_keys = ["Sequence Data",
-                         ]
+        expected_keys = [ "Sequence Data", ]
         check_keys(self, expected_keys, panels)
 
     def test_get_functions_pathways_go(self):
@@ -473,6 +478,18 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         print(panels)
 
         check_keys(self, expected_keys, panels)
+
+    def test_get_cross_references(self):
+        """ Test the get_cross_references method. """
+
+        # Get test scraper.
+        scraper = setup_scraper_complete()
+
+        # Get sequences tables.
+        panels = dict()
+        scraper._get_cross_references("https://www.pseudomonas.com/feature/show/?id=1661780", panels)
+
+        print (panels["Cross-References"])
 
     def test_results_with_all_tabs (self):
         """ Run a query on a strain with a 'complete' dataset."""

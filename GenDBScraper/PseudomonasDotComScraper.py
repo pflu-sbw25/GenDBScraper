@@ -250,7 +250,15 @@ class PseudomonasDotComScraper():
 
         # Loop over headings and get table as pandas.pandas.DataFrame.
         panels["Gene Feature Overview"] = _pandasDF_from_heading(browser, "Gene Feature Overview", None)
-        panels["Cross-References"] = _pandasDF_from_heading(browser, "Cross-References", None)
+
+        # Get cross-references with
+        self._get_cross_references(url, panels)
+
+        #cr = _pandasDF_from_heading(browser, "Cross-References", None)
+        #pandas.rename(index=int, columns={0: "type", 1 : "id"})
+        #cr.iloc[:,"url"]
+        #panels["Cross-References"] = cr
+
         panels["Product"] = _pandasDF_from_heading(browser, "Product", None)
         panels["Subcellular localization"] = _pandasDF_from_heading(browser, "Subcellular localization", None)
         panels["Pathogen Association Analysis"] = _pandasDF_from_heading(browser, "Pathogen Association Analysis", None)
@@ -258,6 +266,51 @@ class PseudomonasDotComScraper():
         panels["Interactions"] = _pandasDF_from_heading(browser, "Interactions", None)
 
         panels["References"] = _pandas_references(browser)
+
+    def _get_cross_references(self, url, panels):
+        """ Extract the cross-references table with hyperlinks from the feature overview tab. """
+        # Get ovierview tab.
+        operons_url = url + "&view=overview"
+        soup = BeautifulSoup(guarded_get(operons_url), 'lxml')
+
+        # Navigate to heading.
+        table_heading = "Cross-References"
+        heading = soup.find('h3', string=re.compile(table_heading))
+
+        # Get content.
+        cross_refs = heading.find_next_sibling('table')
+
+        ref_types = []
+        ref_ids = []
+        ref_urls = []
+        # Loop over operons.
+        pattern = re.compile('[\t\s]')
+        rows = cross_refs.find_all('tr')
+        for i,row in enumerate(rows):
+            cols = row.find_all('td')
+
+            ref_type=cols[0].text
+            ref_type = pattern.sub('', ref_type)
+
+            hyperlink = cols[1].find_next('a')
+            if hyperlink is not None:
+                ref_id_text = pattern.sub('', hyperlink.text)
+                ref_id_url = hyperlink.get('href')
+            else:
+                ref_id_text = cols[1].text
+                ref_id_url = None
+
+            ref_types.append(ref_type)
+            ref_ids.append(ref_id_text)
+            ref_urls.append(ref_id_url)
+
+        df = pandas.DataFrame(numpy.empty((len(ref_types),0)))
+
+        df.index = ref_types
+        df['id'] = ref_ids
+        df['url'] = ref_urls
+
+        panels["Cross-References"] = df
 
     def _get_sequences(self, url, panels):
         """ Parse the 'Sequences' tab and extract the tables.
