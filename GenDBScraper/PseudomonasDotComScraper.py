@@ -11,6 +11,7 @@ from io import StringIO
 from pubmed_lookup import Publication, PubMedLookup
 import json
 import logging
+import numpy
 import os
 import pandas
 import re
@@ -293,6 +294,9 @@ class PseudomonasDotComScraper():
         panels["Gene Ontology"] = _pandasDF_from_heading(browser,"Gene Ontology", None)
         panels["Functional Classifications Manually Assigned by PseudoCAP"] = _pandasDF_from_heading(browser,"Functional Classifications Manually Assigned by PseudoCAP", None)
         panels["Functional Predictions from Interpro"] = _pandasDF_from_heading(browser,"Functional Predictions from Interpro", None)
+
+        # Convert E-values to floats.
+        panels["Functional Predictions from Interpro"]["E-value"] = pandas.to_numeric(panels["Functional Predictions from Interpro"]["E-value"], errors='coerce', downcast='float')
 
     def _get_motifs(self, url, panels):
         """ Parse the 'Motifs' tab and extract the tables.

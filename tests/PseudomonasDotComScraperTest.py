@@ -21,6 +21,7 @@ from subprocess import Popen
 import inspect
 import os, sys
 import pandas
+import numpy
 import re
 import shutil
 import unittest
@@ -276,7 +277,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         check_keys(self, expected_keys, results["sbw25__pflu0916"])
 
         # Check content.
-        present_indices = results['sbw25__pflu0916']['Gene Feature Overview'][1]
+        present_indices = results['sbw25__pflu0916']['Gene Feature Overview'][0]
         for idx in ['Strain', 'Locus Tag', 'Name', 'Replicon', 'Genomic location']:
             self.assertIn(idx, present_indices)
 
@@ -343,6 +344,12 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
                          ]
 
         check_keys(self, expected_keys, panels)
+
+        # Check the E-values are floats, not strings.
+        # Get E-values.
+        e_values = panels["Functional Predictions from Interpro"]["E-value"].values
+        for ev in e_values:
+            self.assertTrue(numpy.issubdtype(ev, numpy.number))
 
     def test_get_motifs(self):
         """ Test the scraping of the "Motifs" tab on pseudomonas.com."""
