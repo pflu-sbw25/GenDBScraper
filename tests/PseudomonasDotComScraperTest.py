@@ -237,7 +237,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         self.assertRaises(RuntimeError, scraper.run_query)
 
     def test_run_query (self):
-        """ Test a method. """
+        """ Test running a query. """
 
         # Instantiate.
         scraper = PseudomonasDotComScraper(query={'strain':'sbw25', 'feature':'pflu0916'})
@@ -277,8 +277,8 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         check_keys(self, expected_keys, results["sbw25__pflu0916"])
 
         # Check content.
-        present_indices = results['sbw25__pflu0916']['Gene Feature Overview'][0].values
-        for idx in ['Strain', 'Locus Tag', 'Name', 'Replicon', 'Genomic location']:
+        present_indices = results['sbw25__pflu0916']['Gene Feature Overview'].index
+        for idx in ['Strain', 'Locus_Tag', 'Name', 'Replicon', 'Genomic_location']:
             self.assertIn(idx, present_indices)
 
     def test_dict_to_pdc_query (self):
