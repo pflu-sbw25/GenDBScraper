@@ -312,11 +312,11 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
                          ]
         check_keys(self, expected_keys, panels)
 
-        # Check hyperlinks.
+        # Check a reference.
         cross_references = panels["Cross-References"]
         refseq = cross_references.loc["RefSeq"].iloc[0]
 
-        print(refseq)
+        self.assertEqual(refseq, "YP_793558.1")
 
     def test_get_sequence(self):
         """ Test the scraping of the "Sequences" tab on pseudomonas.com."""
@@ -475,7 +475,6 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
 
         # Check keys.
         expected_keys = ['Orthologs']
-        print(panels)
 
         check_keys(self, expected_keys, panels)
 
@@ -489,7 +488,8 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         panels = dict()
         scraper._get_cross_references("https://www.pseudomonas.com/feature/show/?id=1661780", panels)
 
-        print (panels["Cross-References"])
+        urls = panels["Cross-References"]['url']
+        self.assertIn("http://www.ncbi.nlm.nih.gov/protein/YP_793558.1", urls.values)
 
     def test_results_with_all_tabs (self):
         """ Run a query on a strain with a 'complete' dataset."""
