@@ -625,7 +625,7 @@ def _pandasDF_from_heading(soup, table_heading, index_column=0):
     :type  index_column: int
 
     :return: The table under the passed heading as a pandas.pandas.DataFrame
-    :rtype: pandas.pandas.DataFrame
+    :rtype: pandas.DataFrame
 
     """
 
