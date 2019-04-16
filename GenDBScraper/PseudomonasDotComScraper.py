@@ -1,18 +1,17 @@
 """ :module PseudomonasDotComScraper: Hosting the PseudomonasDotComScraper, an API for the https://www.pseudomonas.com database web interface. """
 
 from GenDBScraper.Utilities.json_utilities import JSONEncoder
+from GenDBScraper.Utilities.web_utilities import guarded_get, is_good_response
 
 # 3rd party imports
 from bs4 import BeautifulSoup
 from collections import namedtuple
-from contextlib import closing
 from doi2bib import crossref
 from io import StringIO
 from pubmed_lookup import Publication, PubMedLookup
-from requests import get
-from requests.exceptions import RequestException
 import json
 import logging
+import numpy
 import os
 import pandas
 import re
@@ -144,7 +143,7 @@ class PseudomonasDotComScraper():
     def connect(self):
         """ Connect to the database. """
         try:
-            self.__browser = BeautifulSoup(_simple_get(self.__pdc_url), 'html.parser')
+            self.__browser = BeautifulSoup(guarded_get(self.__pdc_url), 'html.parser')
         except:
             self.__connected = False
             raise ConnectionError("Connecting to {0:s} failed. Make sure the URL is set correctly and is reachable.")
@@ -200,7 +199,7 @@ class PseudomonasDotComScraper():
         logging.debug("Will now open {0:s} .".format(_url))
 
         # Get the soup for the assembled url.
-        browser = BeautifulSoup(_simple_get(_url), 'html.parser')
+        browser = BeautifulSoup(guarded_get(_url), 'html.parser')
 
         # If we're looking for a unique feature.
         if _feature is not '':
@@ -247,18 +246,78 @@ class PseudomonasDotComScraper():
         overview_url = url + "&view=overview"
 
         # Get the soup.
-        browser = BeautifulSoup(_simple_get(overview_url), 'lxml')
+        browser = BeautifulSoup(guarded_get(overview_url), 'lxml')
 
         # Loop over headings and get table as pandas.pandas.DataFrame.
         panels["Gene Feature Overview"] = _pandasDF_from_heading(browser, "Gene Feature Overview", 0)
-        panels["Cross-References"] = _pandasDF_from_heading(browser, "Cross-References", 0)
-        panels["Product"] = _pandasDF_from_heading(browser, "Product", 0)
-        panels["Subcellular localization"] = _pandasDF_from_heading(browser, "Subcellular localization",  0)
-        panels["Pathogen Association Analysis"] = _pandasDF_from_heading(browser, "Pathogen Association Analysis", 0)
-        panels["Orthologs/Comparative Genomics"] = _pandasDF_from_heading(browser, "Orthologs/Comparative Genomics", 0 )
-        panels["Interactions"] = _pandasDF_from_heading(browser, "Interactions", 0)
 
+        # Get cross-references with hyperlinks.
+        self._get_cross_references(url, panels)
+
+        # Get remaining tables.
+        panels["Product"] = _pandasDF_from_heading(browser, "Product", 0)
+        panels["Subcellular localization"] = _pandasDF_from_heading(browser, "Subcellular localization", 0)
+        panels["Pathogen Association Analysis"] = _pandasDF_from_heading(browser, "Pathogen Association Analysis", 0)
+        panels["Orthologs/Comparative Genomics"] = _pandasDF_from_heading(browser, "Orthologs/Comparative Genomics", 0)
+        panels["Interactions"] = _pandasDF_from_heading(browser, "Interactions", 0)
         panels["References"] = _pandas_references(browser)
+
+    def _get_cross_references(self, url, panels):
+        """ Extract the cross-references table with hyperlinks from the feature overview tab. """
+        # Get ovierview tab.
+        operons_url = url + "&view=overview"
+        soup = BeautifulSoup(guarded_get(operons_url), 'lxml')
+
+        # Navigate to heading.
+        table_heading = "Cross-References"
+        heading = soup.find('h3', string=re.compile(table_heading))
+
+        # Get content.
+        cross_refs = heading.find_next_sibling('table')
+
+        # Lists to store the data.
+        ref_types = []
+        ref_ids = []
+        ref_urls = []
+
+        # Need to substitute \t\s sequences.
+        pattern = re.compile('[\t\s]')
+
+        # Loop over rows in the table.
+        rows = cross_refs.find_all('tr')
+        for i,row in enumerate(rows):
+            cols = row.find_all('td')
+
+            # Parse the data. First column is the reference type, second is the id, sometimes it's a hyperlink.
+            ref_type=cols[0].text
+            ref_type = pattern.sub('', ref_type)
+
+            # Get 2nd column.
+            hyperlink = cols[1].find('a')
+            if hyperlink is not None:
+                ref_id_text = pattern.sub('', hyperlink.text)
+                ref_id_url = hyperlink.get('href')
+            else:
+                ref_id_text = pattern.sub('', cols[1].text)
+                ref_id_url = None
+
+            # Append to lists.
+            ref_types.append(ref_type)
+            ref_ids.append(ref_id_text)
+            ref_urls.append(ref_id_url)
+
+        # Setup the return dataframe.
+        df = pandas.DataFrame(numpy.empty((len(ref_types),0)))
+
+        # Index.
+        df.index = ref_types
+
+        # Columns.
+        df['id'] = ref_ids
+        df['url'] = ref_urls
+
+        # Insert into panels.
+        panels["Cross-References"] = df
 
     def _get_sequences(self, url, panels):
         """ Parse the 'Sequences' tab and extract the tables.
@@ -272,7 +331,7 @@ class PseudomonasDotComScraper():
         """
 
         sequence_url = url +  "&view=sequence"
-        browser = BeautifulSoup(_simple_get(sequence_url), 'html.parser')
+        browser = BeautifulSoup(guarded_get(sequence_url), 'html.parser')
 
         panels['Sequence Data'] = _pandasDF_from_heading(browser, "Sequence Data", None)
 
@@ -290,11 +349,14 @@ class PseudomonasDotComScraper():
         # Get functions, pathways, GO
         function_url = url + "&view=functions"
 
-        browser = BeautifulSoup(_simple_get(function_url), 'html.parser')
+        browser = BeautifulSoup(guarded_get(function_url), 'lxml')
 
         panels["Gene Ontology"] = _pandasDF_from_heading(browser,"Gene Ontology", None)
         panels["Functional Classifications Manually Assigned by PseudoCAP"] = _pandasDF_from_heading(browser,"Functional Classifications Manually Assigned by PseudoCAP", None)
         panels["Functional Predictions from Interpro"] = _pandasDF_from_heading(browser,"Functional Predictions from Interpro", None)
+
+        # Convert E-values to floats.
+        panels["Functional Predictions from Interpro"]["E-value"] = pandas.to_numeric(panels["Functional Predictions from Interpro"]["E-value"], errors='coerce', downcast='float')
 
     def _get_motifs(self, url, panels):
         """ Parse the 'Motifs' tab and extract the tables.
@@ -309,7 +371,7 @@ class PseudomonasDotComScraper():
 
         # Get motifs tab.
         motifs_url = url + "&view=motifs"
-        browser = BeautifulSoup(_simple_get(motifs_url), 'html.parser')
+        browser = BeautifulSoup(guarded_get(motifs_url), 'html.parser')
 
         panels["Motifs"] = None
 
@@ -326,7 +388,7 @@ class PseudomonasDotComScraper():
 
         # Get operons tab.
         operons_url = url + "&view=operons"
-        soup = BeautifulSoup(_simple_get(operons_url), 'lxml')
+        soup = BeautifulSoup(guarded_get(operons_url), 'lxml')
         table_heading = "Operons"
 
         # Navigate to heading.
@@ -400,7 +462,7 @@ class PseudomonasDotComScraper():
 
         # Get transposons tab.
         transposons_url = url + "&view=transposons"
-        browser = BeautifulSoup(_simple_get(transposons_url), 'html.parser')
+        browser = BeautifulSoup(guarded_get(transposons_url), 'html.parser')
 
         table_heading = "Transposon Insertions"
 
@@ -434,7 +496,7 @@ class PseudomonasDotComScraper():
 
         # Get updates tab.
         updates_url = url + "&view=updates"
-        browser = BeautifulSoup(_simple_get(updates_url), 'html.parser')
+        browser = BeautifulSoup(guarded_get(updates_url), 'html.parser')
 
         heading = browser.find('h3', string=re.compile('Annotation Updates'))
         annotation_table = pandas.read_html(str(heading.parent))
@@ -536,37 +598,6 @@ def _deserialize(path):
 
     return ret
 
-def _simple_get(url):
-    """ """
-    """ Get content of passed URL to pass on to BeautifulSoup.
-
-    :param url: The URL to parse.
-    :type  url: str
-
-    """
-
-    # Safeguard opening the URL.
-    with closing(get(url, stream=True, timeout=10)) as resp:
-        if _is_good_response(resp):
-            logging.info("Connected to %s.", url)
-            return resp.content
-        else:
-            raise RuntimeError("ERROR: Could not open "+url+" .")
-
-def _is_good_response(resp):
-    """ """
-    """ Returns True if the response seems to be HTML, False otherwise.
-
-    :param resp: The response to validate.
-    :type  resp: http response as returned from contextlib.closing
-
-    """
-
-    content_type = resp.headers['Content-Type'].lower()
-    return (resp.status_code == 200
-            and content_type is not None
-            and content_type.find('html') > -1)
-
 def _dict_to_pdc_query(**kwargs):
     """ """
     """
@@ -594,7 +625,7 @@ def _pandasDF_from_heading(soup, table_heading, index_column=0):
     :type  index_column: int
 
     :return: The table under the passed heading as a pandas.pandas.DataFrame
-    :rtype: pandas.pandas.DataFrame
+    :rtype: pandas.DataFrame
 
     """
 
@@ -602,7 +633,15 @@ def _pandasDF_from_heading(soup, table_heading, index_column=0):
     table_ht = str(soup.find('h3', string=re.compile(table_heading)).find_next())
 
     try:
-        df = pandas.read_html(table_ht, index_col=index_column)[0]
+        df = pandas.read_html(table_ht, index_col=None)[0]
+
+        if index_column is not None:
+            index = df[index_column]
+            pattern = re.compile('[\t\s]')
+
+            df.index = [pattern.sub("_",idx) for idx in df[index_column]]
+            del df[index_column]
+
     except:
         logging.warning("No data found for %s. Will return empty pandas.DataFrame.", table_heading)
         df = pandas.DataFrame()
@@ -636,7 +675,7 @@ def _get_doi_from_ncbi(pubmed_link):
         """ Extract the DOI from a pubmed link. """
 
         if (pubmed_link != ''):
-            doi_soup = BeautifulSoup(_simple_get(pubmed_link), 'lxml')
+            doi_soup = BeautifulSoup(guarded_get(pubmed_link), 'lxml')
         line = doi_soup.find(string=re.compile("DOI")).find_parent().find_parent()
         a = line.find('a', string=re.compile('10\.[0-9]*\/'))
         doi_string = a.text

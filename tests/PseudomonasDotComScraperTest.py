@@ -2,9 +2,9 @@
 
 # Import class to be tested.
 from GenDBScraper.PseudomonasDotComScraper import PseudomonasDotComScraper
+from GenDBScraper.Utilities.web_utilities import guarded_get
 from GenDBScraper.PseudomonasDotComScraper import pdc_query,\
                                                   _dict_to_pdc_query,\
-                                                  _simple_get,\
                                                   _pandas_references,\
                                                   _get_bib_from_doi
 
@@ -21,6 +21,7 @@ from subprocess import Popen
 import inspect
 import os, sys
 import pandas
+import numpy
 import re
 import shutil
 import unittest
@@ -236,7 +237,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         self.assertRaises(RuntimeError, scraper.run_query)
 
     def test_run_query (self):
-        """ Test a method. """
+        """ Test running a query. """
 
         # Instantiate.
         scraper = PseudomonasDotComScraper(query={'strain':'sbw25', 'feature':'pflu0916'})
@@ -277,7 +278,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
 
         # Check content.
         present_indices = results['sbw25__pflu0916']['Gene Feature Overview'].index
-        for idx in ['Strain', 'Locus Tag', 'Name', 'Replicon', 'Genomic location']:
+        for idx in ['Strain', 'Locus_Tag', 'Name', 'Replicon', 'Genomic_location']:
             self.assertIn(idx, present_indices)
 
     def test_dict_to_pdc_query (self):
@@ -309,8 +310,13 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
                          "Interactions",
                          "References",
                          ]
-
         check_keys(self, expected_keys, panels)
+
+        # Check a reference.
+        cross_references = panels["Cross-References"]
+        refseq = cross_references.loc["RefSeq"].iloc[0]
+
+        self.assertEqual(refseq, "YP_793558.1")
 
     def test_get_sequence(self):
         """ Test the scraping of the "Sequences" tab on pseudomonas.com."""
@@ -323,8 +329,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         scraper._get_sequences("https://www.pseudomonas.com/feature/show/?id=1661780", panels)
 
         # Check keys.
-        expected_keys = ["Sequence Data",
-                         ]
+        expected_keys = [ "Sequence Data", ]
         check_keys(self, expected_keys, panels)
 
     def test_get_functions_pathways_go(self):
@@ -344,6 +349,12 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
                          ]
 
         check_keys(self, expected_keys, panels)
+
+        # Check the E-values are floats, not strings.
+        # Get E-values.
+        e_values = panels["Functional Predictions from Interpro"]["E-value"].values
+        for ev in e_values:
+            self.assertTrue(numpy.issubdtype(ev, numpy.number))
 
     def test_get_motifs(self):
         """ Test the scraping of the "Motifs" tab on pseudomonas.com."""
@@ -464,9 +475,21 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
 
         # Check keys.
         expected_keys = ['Orthologs']
-        print(panels)
 
         check_keys(self, expected_keys, panels)
+
+    def test_get_cross_references(self):
+        """ Test the get_cross_references method. """
+
+        # Get test scraper.
+        scraper = setup_scraper_complete()
+
+        # Get sequences tables.
+        panels = dict()
+        scraper._get_cross_references("https://www.pseudomonas.com/feature/show/?id=1661780", panels)
+
+        urls = panels["Cross-References"]['url']
+        self.assertIn("http://www.ncbi.nlm.nih.gov/protein/YP_793558.1", urls.values)
 
     def test_results_with_all_tabs (self):
         """ Run a query on a strain with a 'complete' dataset."""
@@ -531,7 +554,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
     def test_pandas_references (self):
         """ Test the references parser function."""
 
-        soup = BeautifulSoup(_simple_get("https://www.pseudomonas.com/feature/show/?id=1661780&view=overview"), 'lxml')
+        soup = BeautifulSoup(guarded_get("https://www.pseudomonas.com/feature/show/?id=1661780&view=overview"), 'lxml')
 
         references = _pandas_references(soup)
 

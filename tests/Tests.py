@@ -5,6 +5,7 @@ import os, sys
 
 # Import suites to run.
 from PseudomonasDotComScraperTest import PseudomonasDotComScraperTest
+from StringDBScraperTest import StringDBScraperTest
 
 # Are we running on CI server?
 is_travisCI = ("TRAVIS_BUILD_DIR" in list(os.environ.keys())) and (os.environ["TRAVIS_BUILD_DIR"] != "")
@@ -13,7 +14,8 @@ is_travisCI = ("TRAVIS_BUILD_DIR" in list(os.environ.keys())) and (os.environ["T
 # Define the test suite.
 def suite():
     suites = [
-               unittest.makeSuite(PseudomonasDotComScraperTest, 'test')
+               unittest.makeSuite(PseudomonasDotComScraperTest, 'test'),
+               unittest.makeSuite(StringDBScraperTest, 'test'),
              ]
 
     return unittest.TestSuite(suites)
