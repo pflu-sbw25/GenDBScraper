@@ -39,7 +39,7 @@ To download the latest snapshot as a zip file click here_.
    :caption: Contents:
 
    include/refman.rst
-   include/notebooks/pdc_scraper_example.ipynb
+   include/notebooks/SBW25_0base.ipynb
 
 Indices and tables
 ==================

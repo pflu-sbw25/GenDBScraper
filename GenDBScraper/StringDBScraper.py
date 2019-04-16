@@ -192,7 +192,7 @@ class StringDBScraper(RESTScraper):
 
 
         # Determine file extension.
-        suffix = ".png" if image_format.find("png") else "svg"
+        suffix = ".png" if image_format.find("png") else ".svg"
 
         # Setup image file.
         _, image_file = tempfile.mkstemp(prefix='string-db_network_', suffix=suffix)
@@ -261,7 +261,7 @@ class StringDBScraper(RESTScraper):
 
         if limit is not None and not isinstance(limit, int):
             raise TypeError("limit must be an integer, {} was supplied.".format(type(limit)))
-        if not isinstance(required_score, int):
+        if required_score is not None and not isinstance(required_score, int):
             raise TypeError("required_score must be an integer (0 <= required_score <= 1000). It will be devided by 1000 to yield the actual minimum score cutoff.")
 
         data = dict(
