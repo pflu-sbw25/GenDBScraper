@@ -1,0 +1,13 @@
+python>=3.5
+beautifulsoup4
+selenium
+numpy
+scipy
+html5lib
+lxml
+pandas
+pip
+requests
+setuptools
+qgrid
+bokeh
