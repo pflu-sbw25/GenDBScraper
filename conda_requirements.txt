@@ -11,3 +11,4 @@ requests
 setuptools
 qgrid
 bokeh
+ipyparallel
