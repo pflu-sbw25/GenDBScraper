@@ -13,3 +13,5 @@ bokeh
 ipyparallel
 doi2bib
 pubmed_lookup
+setuptools_scm
+codecov
