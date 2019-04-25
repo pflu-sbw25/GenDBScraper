@@ -1,3 +1,4 @@
+python>=3.5
 beautifulsoup4
 selenium
 numpy
@@ -11,7 +12,3 @@ setuptools
 qgrid
 bokeh
 ipyparallel
-doi2bib
-pubmed_lookup
-setuptools_scm
-codecov
