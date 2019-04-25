@@ -507,7 +507,7 @@ class PseudomonasDotComScraper():
 
         # Get updates tab.
         updates_url = url + "&view=updates"
-        browser = BeautifulSoup(guarded_get(updates_url), 'html.parser')
+        browser = BeautifulSoup(guarded_get(updates_url), 'lxml')
 
         heading = browser.find('h3', string=re.compile('Annotation Updates'))
         annotation_table = pandas.read_html(str(heading.parent))
