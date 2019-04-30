@@ -57,7 +57,6 @@ dependencies:
   - jupyter_highlight_selected_word=0.2.0=py37_1000
   - jupyter_latex_envs=1.4.4=py37_1000
   - jupyter_nbextensions_configurator=0.4.1=py37_0
-  - jupyter_sphinx=0.1.4=py_0
   - libedit=3.1.20181209=hc058e9b_0
   - libffi=3.2.1=hd88cf55_4
   - libgcc-ng=8.2.0=hdf63c60_1
