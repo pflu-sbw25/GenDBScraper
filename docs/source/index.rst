@@ -30,16 +30,14 @@ To clone the repository::
 
 __ GenDBScraper_
 
-To download the latest snapshot as a zip file click here_.
-
-.. _here: https://github.com/pflu-sbw25/GenDBScraper/archive/master.zip
-
 .. toctree::
    :maxdepth: 3
    :caption: Contents:
 
    include/refman.rst
-   include/notebooks/SBW25_0base.ipynb
+   include/notebooks/SBW25_0base_dashboard.ipynb
+   include/notebooks/pdc_scraper_example.ipynb
+
 
 Indices and tables
 ==================
