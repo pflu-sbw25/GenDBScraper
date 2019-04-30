@@ -41,9 +41,9 @@ class Mock(MagicMock):
 
 
 MOCK_MODULES = [
-                'bs4',
-                'doi2bib',
-                'pubmed_lookup',
+        #'bs4',
+        #'doi2bib',
+        #'pubmed_lookup',
                ]
 
 
