@@ -52,6 +52,7 @@ class PseudomonasDotComScraper():
         self.__pdc_url = 'https://www.pseudomonas.com'
         self.__browser = None
         self.__connected = False
+        self.__results = None
 
         # Set attributes via setter.
         self.query = query
@@ -71,7 +72,6 @@ class PseudomonasDotComScraper():
         """
 
         return self.__query
-
     @query.setter
     def query(self, val):
         """"""
@@ -140,6 +140,17 @@ class PseudomonasDotComScraper():
 
         self.__query = val
 
+    @property
+    def results(self):
+        """ Get the results.
+
+        :return: The results object.
+        :rtype:  pdc_results
+
+        """
+
+        return self.__results
+
     def connect(self):
         """ Connect to the database. """
         try:
@@ -175,7 +186,7 @@ class PseudomonasDotComScraper():
             key = "{0:s}__{1:s}".format(query.strain, query.feature)
             results[key] = self._run_one_query(query)
 
-        return results
+        self.__results = results
 
     def _get_feature_url(self, query):
         """ Get the base URL for the queried feature (gene).
@@ -496,7 +507,7 @@ class PseudomonasDotComScraper():
 
         # Get updates tab.
         updates_url = url + "&view=updates"
-        browser = BeautifulSoup(guarded_get(updates_url), 'html.parser')
+        browser = BeautifulSoup(guarded_get(updates_url), 'lxml')
 
         heading = browser.find('h3', string=re.compile('Annotation Updates'))
         annotation_table = pandas.read_html(str(heading.parent))

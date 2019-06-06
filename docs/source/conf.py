@@ -41,9 +41,9 @@ class Mock(MagicMock):
 
 
 MOCK_MODULES = [
-                'bs4',
-                'doi2bib',
-                'pubmed_lookup',
+        #'bs4',
+        #'doi2bib',
+        #'pubmed_lookup',
                ]
 
 
@@ -67,7 +67,6 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.githubpages',
     'nbsphinx',
-    'jupyter_sphinx.embed_widgets',
 ]
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -92,6 +91,9 @@ language = None
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = []
+exclude_patterns = ['build',
+                    '**.ipynb_checkpoints',
+                   ]
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = None

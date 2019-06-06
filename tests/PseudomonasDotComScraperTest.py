@@ -246,7 +246,8 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         scraper.connect()
 
         # Call a method (expected to raise NotImplemented).
-        results = scraper.run_query()
+        scraper.run_query()
+        results = scraper.results
 
         # Check rtype.
         self.assertIsInstance(results, dict)
@@ -507,7 +508,8 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         # Fetch results.
         scraper = PseudomonasDotComScraper(query=query)
         scraper.connect()
-        results = scraper.run_query()['UCBPP-PA14__PA14_67210']
+        scraper.run_query()
+        results = scraper.results['UCBPP-PA14__PA14_67210']
 
         expected_keys = ["Gene Feature Overview",
                          "Cross-References",
@@ -539,7 +541,8 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         # Fetch results.
         scraper = PseudomonasDotComScraper(query=query)
         scraper.connect()
-        results = scraper.run_query()['UCBPP-PA14__PA14_67210']['References']
+        scraper.run_query()
+        results = scraper.results['UCBPP-PA14__PA14_67210']['References']
 
         # Check column names.
         self.assertIn('citation', results.columns)
@@ -593,7 +596,8 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         # Connect and run the query.
         scraper.connect()
 
-        results = scraper.run_query()
+        scraper.run_query()
+        results = scraper.results
 
         # Serialize.
         json_path = scraper.to_json(results)
