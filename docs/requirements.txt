@@ -2,4 +2,5 @@ alabaster
 sphinx
 ipykernel
 nbsphinx
--r ../requirements.txt
+-r ../conda_requirements.txt
+-r ../pip_requirements.txt
