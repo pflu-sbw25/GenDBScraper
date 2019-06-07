@@ -13,7 +13,7 @@ def guarded_get(url):
 
     """
     # Safeguard opening the URL.
-    with closing(get(url, stream=True, timeout=10)) as resp:
+    with closing(get(url, stream=True, timeout=60)) as resp:
         if is_good_response(resp):
             logging.info("Connected to %s.", url)
             return resp.content

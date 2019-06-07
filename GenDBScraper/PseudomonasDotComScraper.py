@@ -16,6 +16,7 @@ import os
 import pandas
 import re
 import tempfile
+import xmltodict
 
 # Configure logging.
 logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.INFO)
@@ -231,19 +232,19 @@ class PseudomonasDotComScraper():
         feature_url =  self._get_feature_url(query)
 
         # Go through all panels and pull data.
-        self._get_overview(feature_url, panels)
-        self._get_sequences(feature_url, panels)
-        self._get_functions_pathways_go(feature_url, panels)
-        self._get_motifs(feature_url, panels)
-        self._get_operons(feature_url, panels)
-        self._get_transposon_insertions(feature_url, panels)
-        self._get_updates(feature_url, panels)
-        self._get_orthologs(feature_url, panels)
+        panels["Overview"] = self._get_overview(feature_url)
+        panels["Sequences"] = self._get_sequences(feature_url)
+        panels["Function/Pathways/GO"] = self._get_functions_pathways_go(feature_url)
+        panels["Motifs"] = self._get_motifs(feature_url)
+        panels["Operons"] = self._get_operons(feature_url)
+        panels["Transposon Insertions"] = self._get_transposon_insertions(feature_url)
+        panels["Annotation Updates"] = self._get_updates(feature_url)
+        panels["Orthologs"] = self._get_orthologs(feature_url)
 
         # All done, return.
         return panels
 
-    def _get_overview(self, url, panels):
+    def _get_overview(self, url):
         """ Parse the 'Overview' tab and extract the tables.
 
         :param url:  The base URL feature.
@@ -259,21 +260,28 @@ class PseudomonasDotComScraper():
         # Get the soup.
         browser = BeautifulSoup(guarded_get(overview_url), 'lxml')
 
-        # Loop over headings and get table as pandas.pandas.DataFrame.
-        panels["Gene Feature Overview"] = _pandasDF_from_heading(browser, "Gene Feature Overview", 0)
+        # Empty return dict.
+        overview_panel = dict()
 
+        overview_panel["Gene Feature Overview"] = _pandasDF_from_heading(browser, "Gene Feature Overview", 0)
+#
         # Get cross-references with hyperlinks.
-        self._get_cross_references(url, panels)
+        overview_panel["Cross-References"] = self._get_cross_references(url)
 
         # Get remaining tables.
-        panels["Product"] = _pandasDF_from_heading(browser, "Product", 0)
-        panels["Subcellular localization"] = _pandasDF_from_heading(browser, "Subcellular localization", 0)
-        panels["Pathogen Association Analysis"] = _pandasDF_from_heading(browser, "Pathogen Association Analysis", 0)
-        panels["Orthologs/Comparative Genomics"] = _pandasDF_from_heading(browser, "Orthologs/Comparative Genomics", 0)
-        panels["Interactions"] = _pandasDF_from_heading(browser, "Interactions", 0)
-        panels["References"] = _pandas_references(browser)
+        overview_panel["Product"] = _pandasDF_from_heading(browser, "Product", 0)
 
-    def _get_cross_references(self, url, panels):
+        # Get subcellular localizations.
+        overview_panel["Subcellular Localizations"] = self._get_subcellular_localizations(browser)
+
+        overview_panel["Pathogen Association Analysis"] = _pandasDF_from_heading(browser, "Pathogen Association Analysis", 0)
+        overview_panel["Orthologs/Comparative Genomics"] = _pandasDF_from_heading(browser, "Orthologs/Comparative Genomics", 0)
+        overview_panel["Interactions"] = _pandasDF_from_heading(browser, "Interactions", 0)
+        overview_panel["References"] = _pandas_references(browser)
+
+        return overview_panel
+
+    def _get_cross_references(self, url):
         """ Extract the cross-references table with hyperlinks from the feature overview tab. """
         # Get ovierview tab.
         operons_url = url + "&view=overview"
@@ -328,9 +336,9 @@ class PseudomonasDotComScraper():
         df['url'] = ref_urls
 
         # Insert into panels.
-        panels["Cross-References"] = df
+        return df
 
-    def _get_sequences(self, url, panels):
+    def _get_sequences(self, url):
         """ Parse the 'Sequences' tab and extract the tables.
 
         :param url: The base URL of the feature.
@@ -342,12 +350,16 @@ class PseudomonasDotComScraper():
         """
 
         sequence_url = url +  "&view=sequence"
-        browser = BeautifulSoup(guarded_get(sequence_url), 'html.parser')
+        browser = BeautifulSoup(guarded_get(sequence_url), 'lxml')
 
-        panels['Sequence Data'] = _pandasDF_from_heading(browser, "Sequence Data", None)
+        df = _pandasDF_from_heading(browser, "Sequence Data", 0).drop(index="Strain").drop(columns=2)
 
-    def _get_functions_pathways_go(self, url, panels):
-        """ Parse the 'Function/Pathways/GO' tab and extract the tables.
+        return df
+
+    def _get_functions_pathways_go(self, url):
+        """
+
+        Parse the 'Function/Pathways/GO' tab and extract the tables.
 
         :param url: The base URL of the feature.
         :type  url: str
@@ -357,6 +369,7 @@ class PseudomonasDotComScraper():
 
         """
 
+        panels = dict()
         # Get functions, pathways, GO
         function_url = url + "&view=functions"
 
@@ -369,7 +382,9 @@ class PseudomonasDotComScraper():
         # Convert E-values to floats.
         panels["Functional Predictions from Interpro"]["E-value"] = pandas.to_numeric(panels["Functional Predictions from Interpro"]["E-value"], errors='coerce', downcast='float')
 
-    def _get_motifs(self, url, panels):
+        return panels
+
+    def _get_motifs(self, url):
         """ Parse the 'Motifs' tab and extract the tables.
 
         :param url: The base URL of the feature.
@@ -382,11 +397,11 @@ class PseudomonasDotComScraper():
 
         # Get motifs tab.
         motifs_url = url + "&view=motifs"
-        browser = BeautifulSoup(guarded_get(motifs_url), 'html.parser')
+        browser = BeautifulSoup(guarded_get(motifs_url), 'lxml')
 
-        panels["Motifs"] = None
+        return pandas.DataFrame()
 
-    def _get_operons(self, url, panels):
+    def _get_operons(self, url):
         """ Parse the 'operons' tab and extract the tables.
 
         :param url: The base URL of the feature.
@@ -458,9 +473,9 @@ class PseudomonasDotComScraper():
             operons_dict[name] = operon_dict
 
         # Loop over headings and get table as pandas.pandas.DataFrame.
-        panels['Operons'] = operons_dict
+        return operons_dict
 
-    def _get_transposon_insertions(self, url, panels):
+    def _get_transposon_insertions(self, url):
         """ Parse the 'transposons' tab and extract the tables.
 
         :param url: The base URL of the feature.
@@ -492,9 +507,9 @@ class PseudomonasDotComScraper():
 
             transposon_dict[key] = td
 
-        panels[table_heading] = transposon_dict
+        return transposon_dict
 
-    def _get_updates(self, url, panels):
+    def _get_updates(self, url):
         """ Parse the 'Updates' tab and extract the tables.
 
         :param url: The base URL of the feature.
@@ -512,9 +527,38 @@ class PseudomonasDotComScraper():
         heading = browser.find('h3', string=re.compile('Annotation Updates'))
         annotation_table = pandas.read_html(str(heading.parent))
 
-        panels['Annotation Updates'] = annotation_table
+        return annotation_table
 
-    def _get_orthologs(self, url, panels):
+    def _get_subcellular_localizations(self, soup):
+        """ Parse the 'Subcellular localizations' table in the overview section.
+
+        :param soup: The html tree to search.
+        :type  url: str
+
+        :param panel: The datastructure into which to insert found data.
+        :type  panel: dict
+
+        """
+
+        # Setup target dictionary.
+        subcellular_localizations = dict()
+        keys = ["Individual Mappings", "Additional evidence"]
+        for key in keys:
+            table_ht = str(soup.find('td', string=re.compile(key+".*$")).find_next('table'))
+
+            try:
+                df = pandas.read_html(table_ht, index_col=None)[0]
+
+            except:
+                raise
+                logging.warning("No data found for %s. Will return empty pandas.DataFrame.", table_heading)
+                df = pandas.DataFrame()
+
+            subcellular_localizations[key] = df
+
+        return subcellular_localizations
+
+    def _get_orthologs(self, url):
         """ Parse the 'Orthologs' tab and extract the tables.
 
         :param url: The base URL of the feature.
@@ -529,8 +573,8 @@ class PseudomonasDotComScraper():
         # Orthologs are different in that they are queried from the pdc
         # orthologs database. We construct the corresponding URL and pull
         # the tab file directly.
-        # TODO: or should we pull the fasta?
 
+        panel = dict()
         # Get the pseudomonas.com id for this feature.
         pdc_id = url.split('id=')[1]
 
@@ -539,18 +583,94 @@ class PseudomonasDotComScraper():
 
         # GET html. Bail out if none.
         try:
-            request = get(orthologs_url)
+            request = guarded_get(orthologs_url).decode('utf-8')
 
             # Buffer the data.
-            with StringIO(request.text) as stream:
-                df = pandas.read_csv(stream, sep='\t')
+            with StringIO(request) as stream:
+                og = pandas.read_csv(stream, sep='\t')
                 stream.close()
 
         except:
             logging.warning("No orthologs found. Will return empty DataFrame.")
-            df = pandas.DataFrame()
+            og = pandas.DataFrame()
+            raise
 
-        panels["Orthologs"] = df
+        panel["Ortholog group"] = og
+
+        # Construct the URL for the orthologs cluster DB.
+        ortholog_cluster_url = 'http://pseudoluge.pseudomonas.com/named/download/xml?gene_id={}'.format(pdc_id)
+
+        # GET html. Bail out if none.
+        try:
+            request = guarded_get(ortholog_cluster_url).decode('utf-8')
+            with StringIO(request) as stream:
+                xml_content = xmltodict.parse(stream.read())
+
+            groups = xml_content['opt']['data']['groups']
+
+            # Treat ortholog group.
+            ortholog_group = []
+            if 'orthologGroup' in groups.keys():
+                ortholog_group = groups['orthologGroup']
+
+            og_0 = []
+            og_1 = []
+            for member in ortholog_group:
+                og_0.append(member['geneRef'][0]['@id'])
+                og_1.append(member['geneRef'][1]['@id'])
+            ortholog_group_df = pandas.DataFrame()
+            ortholog_group_df["0"] = og_0
+            ortholog_group_df["1"] = og_1
+
+            # Treat paralog group.
+            paralog_group = []
+            if 'paralogGroup' in groups.keys():
+                paralog_group = groups['paralogGroup']
+
+            pg_0 = []
+            pg_1 = []
+            for member in paralog_group:
+                pg_0.append(member['geneRef'][0]['@id'])
+                pg_1.append(member['geneRef'][1]['@id'])
+            paralog_group_df = pandas.DataFrame()
+            paralog_group_df["0"] = pg_0
+            paralog_group_df["1"] = pg_1
+
+            # Treat species
+            species = xml_content['opt']['data']['species']
+            names = []
+            genome_project_ids = []
+            db_links = []
+            pdc_ids = []
+            pdc_links = []
+            GIs = []
+
+            for member in species:
+                names.append(member['@name'])
+                genome_project_ids.append(member['@GenomeProjectId'])
+                db_links.append('/'.join([member['database']['@geneLink'],member['database']['genes']['@geneId']]))
+                pdc_ids.append(member['database']['genes']['@id'])
+                pdc_links.append('/'.join([self.__pdc_url,"primarySequenceFeature/list?c1=name&v1={0:s}".format(member['database']['genes']['@id'])]))
+                GIs.append(member['database']['genes']['@geneId'])
+
+            species_df = pandas.DataFrame()
+            species_df['Species name'] = names
+            species_df['Genome project id'] = genome_project_ids
+            species_df['Gene id'] = GIs
+            species_df['ncbi'] = db_links
+            species_df['pseudomonas.com id'] = pdc_ids
+            species_df['pdc'] = pdc_links
+
+        except:
+            logging.warning("No ortholog species found. Will return empty DataFrame.")
+            species_df = pandas.DataFrame()
+            raise
+
+        panel["Ortholog cluster"] = ortholog_group_df
+        panel["Paralog cluster"] = paralog_group_df
+        panel["Ortholog species"] = species_df
+
+        return panel
 
     def to_json(self, results, outfile=None):
         """ Serialize results dictionary to json.
@@ -642,11 +762,14 @@ def _pandasDF_from_heading(soup, table_heading, index_column=0):
 
     # Get table html string.
     table_ht = str(soup.find('h3', string=re.compile(table_heading)).find_next())
+    pattern = re.compile('[\t\n]')
+    table_ht = pattern.sub("", table_ht)
 
     try:
         df = pandas.read_html(table_ht, index_col=None)[0]
 
         if index_column is not None:
+
             index = df[index_column]
             pattern = re.compile('[\t\s]')
 
@@ -713,6 +836,7 @@ def _get_bib_from_doi(doi):
                  'date'     :"{0:d}-{1:02d}-{2:02d}".format(*(message['published-print']['date-parts'][0])),
                 }
     return entry
+
 
 def _run_from_cli(args):
     """ Called if run via command line interface.
