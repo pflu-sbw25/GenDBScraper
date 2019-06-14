@@ -492,7 +492,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         panels = scraper._get_orthologs("https://www.pseudomonas.com/feature/show/?id=1459889")
 
         # Check keys.
-        expected_keys = ['Ortholog cluster', 'Paralog cluster', 'Ortholog species']
+        expected_keys = ['Ortholog cluster', 'Ortholog group', 'Orthoxml']
 
         check_keys(self, expected_keys, panels)
 

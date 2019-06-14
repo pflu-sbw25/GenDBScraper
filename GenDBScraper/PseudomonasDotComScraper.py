@@ -598,77 +598,29 @@ class PseudomonasDotComScraper():
         panel["Ortholog group"] = og
 
         # Construct the URL for the orthologs cluster DB.
+        # XML
         ortholog_cluster_url = 'http://pseudoluge.pseudomonas.com/named/download/xml?gene_id={}'.format(pdc_id)
 
         # GET html. Bail out if none.
         try:
             request = guarded_get(ortholog_cluster_url).decode('utf-8')
             with StringIO(request) as stream:
-                xml_content = xmltodict.parse(stream.read())
-
-            groups = xml_content['opt']['data']['groups']
-
-            # Treat ortholog group.
-            ortholog_group = []
-            if 'orthologGroup' in groups.keys():
-                ortholog_group = groups['orthologGroup']
-
-            og_0 = []
-            og_1 = []
-            for member in ortholog_group:
-                og_0.append(member['geneRef'][0]['@id'])
-                og_1.append(member['geneRef'][1]['@id'])
-            ortholog_group_df = pandas.DataFrame()
-            ortholog_group_df["0"] = og_0
-            ortholog_group_df["1"] = og_1
-
-            # Treat paralog group.
-            paralog_group = []
-            if 'paralogGroup' in groups.keys():
-                paralog_group = groups['paralogGroup']
-
-            pg_0 = []
-            pg_1 = []
-            for member in paralog_group:
-                pg_0.append(member['geneRef'][0]['@id'])
-                pg_1.append(member['geneRef'][1]['@id'])
-            paralog_group_df = pandas.DataFrame()
-            paralog_group_df["0"] = pg_0
-            paralog_group_df["1"] = pg_1
-
-            # Treat species
-            species = xml_content['opt']['data']['species']
-            names = []
-            genome_project_ids = []
-            db_links = []
-            pdc_ids = []
-            pdc_links = []
-            GIs = []
-
-            for member in species:
-                names.append(member['@name'])
-                genome_project_ids.append(member['@GenomeProjectId'])
-                db_links.append('/'.join([member['database']['@geneLink'],member['database']['genes']['@geneId']]))
-                pdc_ids.append(member['database']['genes']['@id'])
-                pdc_links.append('/'.join([self.__pdc_url,"primarySequenceFeature/list?c1=name&v1={0:s}".format(member['database']['genes']['@id'])]))
-                GIs.append(member['database']['genes']['@geneId'])
-
-            species_df = pandas.DataFrame()
-            species_df['Species name'] = names
-            species_df['Genome project id'] = genome_project_ids
-            species_df['Gene id'] = GIs
-            species_df['ncbi'] = db_links
-            species_df['pseudomonas.com id'] = pdc_ids
-            species_df['pdc'] = pdc_links
-
+                xml_dict = xmltodict.parse(stream.read())
         except:
             logging.warning("No ortholog species found. Will return empty DataFrame.")
-            species_df = pandas.DataFrame()
-            raise
+            xml_dict = OrderedDict()
 
-        panel["Ortholog cluster"] = ortholog_group_df
-        panel["Paralog cluster"] = paralog_group_df
-        panel["Ortholog species"] = species_df
+        panel["Ortholog xml"]     = xml_dict
+
+        # CSV
+        ortholog_cluster_csv  = 'http://pseudoluge.pseudomonas.com/named/download/csv?gene_id={}'.format(pdc_id)
+
+        try:
+            panel["Ortholog cluster"] = pandas.read_csv(ortholog_cluster_csv)
+        except:
+            print("Could not read csv resource. Will return empty dataframe.")
+            panel["Ortholog cluster"] = pandas.DataFrame()
+
 
         return panel
 
