@@ -1,10 +1,11 @@
 """ :module PseudomonasDotComScraper: Hosting the PseudomonasDotComScraper, an API for the https://www.pseudomonas.com database web interface. """
 
 from GenDBScraper.Utilities.json_utilities import JSONEncoder
-from GenDBScraper.Utilities.web_utilities import guarded_get, is_good_response
+from GenDBScraper.Utilities.web_utilities import guarded_get
 
 # 3rd party imports
 from bs4 import BeautifulSoup
+from collections import OrderedDict
 from collections import namedtuple
 from doi2bib import crossref
 from io import StringIO
@@ -12,7 +13,6 @@ from pubmed_lookup import Publication, PubMedLookup
 import json
 import logging
 import numpy
-import os
 import pandas
 import re
 import tempfile
@@ -23,17 +23,16 @@ logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=loggi
 
 # Define the query datastructure.
 pdc_query = namedtuple('pdc_query',
-        field_names=('strain', 'feature', 'organism'),
-        defaults=(None, None, None),
-        )
+                       field_names=('strain', 'feature', 'organism'),
+                       defaults=(None, None, None),
+                       )
+
 
 class PseudomonasDotComScraper():
     """  An API for the pseudomonas.com genome database using web scraping technology. """
 
     # Class constructor
-    def __init__(self,
-            query=None,
-            ):
+    def __init__(self, query=None,):
         """
         PseudomonasDotComScraper constructor.
 
@@ -44,9 +43,6 @@ class PseudomonasDotComScraper():
         :example: scraper = PseudomonasDotComScraper(query=pdc_query(strain='sbw25', feature='pflu0916'))
 
         """
-
-        # Base class initialization.
-        #super(<+ClassName+>).__init__(<+base_class_args+>)
 
         # Initialize all variables.
         self.__query = None
@@ -73,6 +69,7 @@ class PseudomonasDotComScraper():
         """
 
         return self.__query
+
     @query.setter
     def query(self, val):
         """"""
@@ -88,7 +85,6 @@ class PseudomonasDotComScraper():
         if val is None:
             val = [pdc_query(strain='sbw25')]
 
-
         exc = TypeError("The parameter 'query' must be a dict or pdc_query or a list, tuple, or set of queries. Examples: query={'strain' : 'sbw25', 'feature'='pflu0916'}; query=pdc_query(strain='sbw25', feature='pflu0916') or query=[pdc_query(strain='sbw25', feature='pflu0916'), pdc_query(strain='sbw25', feature='pflu0917')].")
 
         if not isinstance(val, list):
@@ -97,7 +93,7 @@ class PseudomonasDotComScraper():
             else:
                 val = [val]
 
-        for i,v in enumerate(val):
+        for i, v in enumerate(val):
             if isinstance(v, dict):
                 pass
             elif isinstance(v, pdc_query):
@@ -106,22 +102,22 @@ class PseudomonasDotComScraper():
                 raise exc
 
         # Iterate over all queries.
-        for i,v in enumerate(val):
+        for i, v in enumerate(val):
             # Check keys if dict.
             if isinstance(v, dict):
                 # Only these are acceptable query keywords.
                 accepted_keys = ('strain', 'feature', 'organism')
                 present_keys = v.keys()
                 for k in present_keys:
-                    if not k in accepted_keys:
+                    if k not in accepted_keys:
                         raise KeyError("Only 'strain', 'feature', and 'organism' are acceptable keys.)")
 
                 # Complete keywords.
-                if not 'strain' in v.keys():
+                if 'strain' not in v.keys():
                     v['strain'] = None
-                if not 'feature' in v.keys():
+                if 'feature' not in v.keys():
                     v['feature'] = None
-                if not 'organism' in v.keys():
+                if 'organism' not in v.keys():
                     v['organism'] = None
 
                 # Convert to pdc_query
@@ -202,10 +198,10 @@ class PseudomonasDotComScraper():
             _feature = ''
 
         # Assemble the html query.
-        if query.strain is not None: # Searching for specific strain.
-            _url = self.__pdc_url+"/primarySequenceFeature/list?c1=name&v1={0:s}&e1=1&term1={1:s}&assembly=complete".format(_feature, query.strain)
-        elif query.organism is not None: # Searching for organism.
-            _url = self.__pdc_url+"/primarySequenceFeature/list?c1=name&v1={0:s}&e1=1&term2={1:s}&assembly=complete".format(_feature, self.query.organism)
+        if query.strain is not None:    # Searching for specific strain.
+            _url = self.__pdc_url + "/primarySequenceFeature/list?c1=name&v1={0:s}&e1=1&term1={1:s}&assembly=complete".format(_feature, query.strain)
+        elif query.organism is not None:    # Searching for organism.
+            _url = self.__pdc_url + "/primarySequenceFeature/list?c1=name&v1={0:s}&e1=1&term2={1:s}&assembly=complete".format(_feature, self.query.organism)
 
         # Debug info.
         logging.debug("Will now open {0:s} .".format(_url))
@@ -229,7 +225,7 @@ class PseudomonasDotComScraper():
 
         # Setup dict to store self.query results.
         panels = dict()
-        feature_url =  self._get_feature_url(query)
+        feature_url = self._get_feature_url(query)
 
         # Go through all panels and pull data.
         panels["Overview"] = self._get_overview(feature_url)
@@ -264,7 +260,7 @@ class PseudomonasDotComScraper():
         overview_panel = dict()
 
         overview_panel["Gene Feature Overview"] = _pandasDF_from_heading(browser, "Gene Feature Overview", 0)
-#
+
         # Get cross-references with hyperlinks.
         overview_panel["Cross-References"] = self._get_cross_references(url)
 
@@ -273,7 +269,6 @@ class PseudomonasDotComScraper():
 
         # Get subcellular localizations.
         overview_panel["Subcellular Localizations"] = self._get_subcellular_localizations(browser)
-
         overview_panel["Pathogen Association Analysis"] = _pandasDF_from_heading(browser, "Pathogen Association Analysis", 0)
         overview_panel["Orthologs/Comparative Genomics"] = _pandasDF_from_heading(browser, "Orthologs/Comparative Genomics", 0)
         overview_panel["Interactions"] = _pandasDF_from_heading(browser, "Interactions", 0)
@@ -304,11 +299,11 @@ class PseudomonasDotComScraper():
 
         # Loop over rows in the table.
         rows = cross_refs.find_all('tr')
-        for i,row in enumerate(rows):
+        for i, row in enumerate(rows):
             cols = row.find_all('td')
 
             # Parse the data. First column is the reference type, second is the id, sometimes it's a hyperlink.
-            ref_type=cols[0].text
+            ref_type = cols[0].text
             ref_type = pattern.sub('', ref_type)
 
             # Get 2nd column.
@@ -326,7 +321,7 @@ class PseudomonasDotComScraper():
             ref_urls.append(ref_id_url)
 
         # Setup the return dataframe.
-        df = pandas.DataFrame(numpy.empty((len(ref_types),0)))
+        df = pandas.DataFrame(numpy.empty((len(ref_types), 0)))
 
         # Index.
         df.index = ref_types
@@ -349,7 +344,7 @@ class PseudomonasDotComScraper():
 
         """
 
-        sequence_url = url +  "&view=sequence"
+        sequence_url = url + "&view=sequence"
         browser = BeautifulSoup(guarded_get(sequence_url), 'lxml')
 
         df = _pandasDF_from_heading(browser, "Sequence Data", 0).drop(index="Strain").drop(columns=2)
@@ -375,9 +370,9 @@ class PseudomonasDotComScraper():
 
         browser = BeautifulSoup(guarded_get(function_url), 'lxml')
 
-        panels["Gene Ontology"] = _pandasDF_from_heading(browser,"Gene Ontology", None)
-        panels["Functional Classifications Manually Assigned by PseudoCAP"] = _pandasDF_from_heading(browser,"Functional Classifications Manually Assigned by PseudoCAP", None)
-        panels["Functional Predictions from Interpro"] = _pandasDF_from_heading(browser,"Functional Predictions from Interpro", None)
+        panels["Gene Ontology"] = _pandasDF_from_heading(browser, "Gene Ontology", None)
+        panels["Functional Classifications Manually Assigned by PseudoCAP"] = _pandasDF_from_heading(browser, "Functional Classifications Manually Assigned by PseudoCAP", None)
+        panels["Functional Predictions from Interpro"] = _pandasDF_from_heading(browser, "Functional Predictions from Interpro", None)
 
         # Convert E-values to floats.
         panels["Functional Predictions from Interpro"]["E-value"] = pandas.to_numeric(panels["Functional Predictions from Interpro"]["E-value"], errors='coerce', downcast='float')
@@ -395,9 +390,10 @@ class PseudomonasDotComScraper():
 
         """
 
+        logging.info("Querying Motifs is not implemented yet.")
         # Get motifs tab.
-        motifs_url = url + "&view=motifs"
-        browser = BeautifulSoup(guarded_get(motifs_url), 'lxml')
+        # motifs_url = url + "&view=motifs"
+        # BeautifulSoup(guarded_get(motifs_url), 'lxml')
 
         return pandas.DataFrame()
 
@@ -437,7 +433,6 @@ class PseudomonasDotComScraper():
                 logging.warning("No operon data found.")
                 break
 
-
             name = operon.findChild(string=re.compile("Operon name"))
             tabs = re.compile("\t*")
             name = tabs.sub("", name)
@@ -447,8 +442,8 @@ class PseudomonasDotComScraper():
             operon_dict['Genes'] = tmp[1]
 
             evidence = str(operon.find(string=re.compile('Evidence')).find_next('div').text)
-            evidence=re.compile("[\t\n\s\.]").sub("",evidence)
-            evidence = re.sub("\.","",evidence)
+            evidence = re.compile("[\t\n\s\.]").sub("", evidence)
+            evidence = re.sub("\.", "", evidence)
             operon_dict['Evidence'] = evidence
 
             references = operon.find_all(string=re.compile('PubMed ID'))
@@ -458,7 +453,7 @@ class PseudomonasDotComScraper():
                 pubmed = ref.find_next_sibling('a')
                 pubmed_url = pubmed.get('href')
                 pubmed_id = str(pubmed.text)
-                pubmed_id = re.compile('[\t\n\s]').sub('',pubmed_id)
+                pubmed_id = re.compile('[\t\n\s]').sub('', pubmed_id)
 
                 lookup = PubMedLookup(pubmed_id, '')
                 citation = Publication(lookup).cite()
@@ -467,7 +462,7 @@ class PseudomonasDotComScraper():
             operon_dict['References'] = pandas.DataFrame(refs)
 
             cross_references = str(operon.find(string=re.compile("Cross-References")).find_next('div').find_next('div').text)
-            cross_references=re.compile("[\t\n\s]").sub("", cross_references)
+            cross_references = re.compile("[\t\n\s]").sub("", cross_references)
             operon_dict['Cross-References'] = cross_references
 
             operons_dict[name] = operon_dict
@@ -544,14 +539,14 @@ class PseudomonasDotComScraper():
         subcellular_localizations = dict()
         keys = ["Individual Mappings", "Additional evidence"]
         for key in keys:
-            table_ht = str(soup.find('td', string=re.compile(key+".*$")).find_next('table'))
+            table_ht = str(soup.find('td', string=re.compile(key + ".*$")).find_next('table'))
 
             try:
                 df = pandas.read_html(table_ht, index_col=None)[0]
 
             except:
                 raise
-                logging.warning("No data found for %s. Will return empty pandas.DataFrame.", table_heading)
+                logging.warning("No subcellular localizations found. Will return empty pandas.DataFrame.")
                 df = pandas.DataFrame()
 
             subcellular_localizations[key] = df
@@ -610,17 +605,16 @@ class PseudomonasDotComScraper():
             logging.warning("No ortholog species found. Will return empty DataFrame.")
             xml_dict = OrderedDict()
 
-        panel["Ortholog xml"]     = xml_dict
+        panel["Ortholog xml"] = xml_dict
 
         # CSV
-        ortholog_cluster_csv  = 'http://pseudoluge.pseudomonas.com/named/download/csv?gene_id={}'.format(pdc_id)
+        ortholog_cluster_csv = 'http://pseudoluge.pseudomonas.com/named/download/csv?gene_id={}'.format(pdc_id)
 
         try:
             panel["Ortholog cluster"] = pandas.read_csv(ortholog_cluster_csv)
         except:
             print("Could not read csv resource. Will return empty dataframe.")
             panel["Ortholog cluster"] = pandas.DataFrame()
-
 
         return panel
 
@@ -659,12 +653,14 @@ class PseudomonasDotComScraper():
 
         return _deserialize(infile)
 
+
 def _serialize(path, obj):
     """ """
     """ Serialize the passed dictionary (obj) to path. """
 
     with open(path, 'w') as fp:
         json.dump(obj, fp, cls=JSONEncoder)
+
 
 def _deserialize(path):
     """ """
@@ -681,6 +677,7 @@ def _deserialize(path):
 
     return ret
 
+
 def _dict_to_pdc_query(**kwargs):
     """ """
     """
@@ -693,6 +690,7 @@ def _dict_to_pdc_query(**kwargs):
     query = pdc_query(kwargs['strain'], kwargs['feature'], kwargs['organism'])
 
     return query
+
 
 def _pandasDF_from_heading(soup, table_heading, index_column=0):
     """ """
@@ -725,7 +723,7 @@ def _pandasDF_from_heading(soup, table_heading, index_column=0):
             index = df[index_column]
             pattern = re.compile('[\t\s]')
 
-            df.index = [pattern.sub("_",idx) for idx in df[index_column]]
+            df.index = [pattern.sub("_", idx) for idx in index]
             del df[index_column]
 
     except:
@@ -733,6 +731,7 @@ def _pandasDF_from_heading(soup, table_heading, index_column=0):
         df = pandas.DataFrame()
 
     return df
+
 
 def _pandas_references(soup):
     """ Extract references from given html soup and return them as pandas pandas.DataFrame. """
@@ -747,15 +746,16 @@ def _pandas_references(soup):
     a_tags = ref_soup.find_next().find_all('a')
 
     # Loop over all <a> tags
-    for i,a in enumerate(a_tags):
+    for i, a in enumerate(a_tags):
         # Get the link text.
-        pubmed_link=a.get('href')
+        pubmed_link = a.get('href')
 
         citation = Publication(PubMedLookup(pubmed_link, '')).cite()
         raw.append(dict(pubmed_url=pubmed_link, citation=citation))
 
     # Return as pandas.DataFrame.
     return pandas.DataFrame(raw)
+
 
 def _get_doi_from_ncbi(pubmed_link):
         """ Extract the DOI from a pubmed link. """
@@ -765,9 +765,10 @@ def _get_doi_from_ncbi(pubmed_link):
         line = doi_soup.find(string=re.compile("DOI")).find_parent().find_parent()
         a = line.find('a', string=re.compile('10\.[0-9]*\/'))
         doi_string = a.text
-        doi = re.sub("[\t,\n,\s]","",doi_string)
+        doi = re.sub("[\t,\n,\s]", "", doi_string)
 
         return doi
+
 
 def _get_bib_from_doi(doi):
     """ Get bibliographic information from a given doi."""
@@ -778,15 +779,15 @@ def _get_bib_from_doi(doi):
     if success and json['status'].lower() == 'ok':
         message = json['message']
 
-        entry = {'doi'      :doi,
-                 'first_author'   :"{0:s}, {1:s}".format(message['author'][0]['family'],
-                                                   message['author'][0]['given']),
-                 'title'    :message['title'][0],
-                 'container':message['container-title'][0],
-                 'volume'   :message['volume'],
-                 'page'     :message['page'],
-                 'date'     :"{0:d}-{1:02d}-{2:02d}".format(*(message['published-print']['date-parts'][0])),
-                }
+        entry = {'doi': doi,
+                 'first_author': "{0:s}, {1:s}".format(message['author'][0]['family'],
+                                                       message['author'][0]['given']),
+                 'title': message['title'][0],
+                 'container': message['container-title'][0],
+                 'volume': message['volume'],
+                 'page': message['page'],
+                 'date': "{0:d}-{1:02d}-{2:02d}".format(*(message['published-print']['date-parts'][0])),
+                 }
     return entry
 
 
@@ -831,16 +832,7 @@ def _run_from_cli(args):
 
     return 1
 
-def _cleanup_str(chars, string):
-    """ Replace all characters in chars in string by  "". """
 
-    patterns = []
-    for c in chars:
-        patterns.append(re.compile(c))
-
-
-    space = re.compile(" *")
-    tab = re.compile("\t*")
 if __name__ == "__main__":
 
     from argparse import ArgumentParser
@@ -865,20 +857,20 @@ if __name__ == "__main__":
 
     org_group = parser.add_mutually_exclusive_group(required=True)
     org_group.add_argument("-s",
-                        "--strain",
-                        dest="strain",
-                        default=None,
-                        help="The strain to query from pseudomonas.com. Mutually exclusive with parameter -o/--organism option.")
+                           "--strain",
+                           dest="strain",
+                           default=None,
+                           help="The strain to query from pseudomonas.com. Mutually exclusive with parameter -o/--organism option.",
+                           )
 
     org_group.add_argument("-O",
-                        "--organism",
-                        dest="organism",
-                        default=None,
-                        help="The organism to query from pseudomonas.com. Mutually exclusive with parameter 'strain'.")
+                           "--organism",
+                           dest="organism",
+                           default=None,
+                           help="The organism to query from pseudomonas.com. Mutually exclusive with parameter 'strain'.",
+                           )
 
     # Parse arguments.
     args = parser.parse_args()
 
     _run_from_cli(args)
-
-
