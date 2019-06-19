@@ -11,20 +11,19 @@ from GenDBScraper.PseudomonasDotComScraper import pdc_query,\
 # Utilities
 from TestUtilities.TestUtilities import _remove_test_files
 from TestUtilities.TestUtilities import check_keys
+# 3rd party imports
+from bs4 import BeautifulSoup
+import os
+import pandas
+import numpy
+import re
+import unittest
+from io import StringIO
+from Bio import SeqIO
 
 # Alias for generic tests.
 TestedClass = PseudomonasDotComScraper
 
-# 3rd party imports
-from bs4 import BeautifulSoup
-from subprocess import Popen
-import inspect
-import os, sys
-import pandas
-import numpy
-import re
-import shutil
-import unittest
 
 def setup_scraper_complete():
     """ Construct a default scraper for testing. """
@@ -37,6 +36,7 @@ def setup_scraper_complete():
     scraper.connect()
 
     return scraper
+
 
 def setup_scraper_incomplete():
     """ Construct a default scraper for testing. """
@@ -337,13 +337,29 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         # Check keys.
         self.assertIsInstance(panel, pandas.DataFrame)
         expected_indices = [
-                "DNA_Sequence_Upstream_of_Gene",
-                "DNA_Sequence_for_Gene",
-                "DNA_Sequence_Downstream_of_Gene",
+                "DNA Sequence Upstream of Gene",
+                "DNA Sequence for Gene",
+                "DNA Sequence Downstream of Gene",
+                "Amino Acid Sequence",
                 ]
-        indices = list(panel.index)
+        indices = list(panel[0])
         for ei in expected_indices:
             self.assertIn(ei, indices)
+
+    def test_get_sequence_fasta(self):
+        """ Test the scraping of the "Sequences" tab on pseudomonas.com and seqio parsing"""
+
+        # Get test scraper.
+        scraper = setup_scraper_complete()
+
+        # Get sequences tables.
+        panel = scraper._get_sequences("https://www.pseudomonas.com/feature/show/?id=1661780" )
+
+        # Check gene.
+        stream = StringIO(panel.loc[panel[0] == "DNA Sequence for Gene",1].values[0])
+        gene_record = SeqIO.read(stream, 'fasta')
+
+        self.assertEqual(gene_record.seq, "ATGCGAATCTCTATTGGTCTATTCATTTTCCTGTTGAGTTTCGGAGTTCCCGCTATGGCCGACAGTAAGCCGTTCATCTGCGTTAATGAGAAAGACCATGCCACCTCTCGATCCCCAGGCCGATGCCTGGTATCGGGAAGCAGTTGCGCTAGCTAAGCCTGACGCCTTGCGTCCTTGGGGACGTATTGTGGACTTATAGTAAGGCAGTTGAGCGTGGGCATTGGAAGGCGATGCATAATTTGGCGAATCTTTATCGCACAGGGTGGCCCGGAGGGGTAGAAAAAGATACGCAGAACATTGGATCTCTATCAAAAGATGATCGATCTGGAGGTGCCCCAAGGGTTCTATGATATGGGAGCAATGATCGGCAATCGTGCAGGGGTCATGAATCCTAACTGACGGGCTTAGTTTTCTTAATAAGGCTGCTAGCCTAGGAAATCCGCCGGCATTAACCGAGCTAGGTAAGCTCTATATATATGTGGCCAAAAAAAGATTTGGGGTTGGCGTATACTCACTGTGCTGCTAGCCAGGGCTATGCGCCGGCTAGTTATGAGTTGGGGGCGTATTACAAGATAGTAGAGCATAATTTCAAAAGCATTGGGTTATTATCAGGCGTCAGTCTCTCAGGGCGGAAAGAGTGCGGCTTTATTTATCTCCGGTGTTTTTGATAAAGCCAGTCCTGATGTCTAGAATGTGGTACGCACCCGATGAGAAATTGCGCAAATTATATGATGGTATTTACGATAAACTTGCCGCTGATCCTGATTTTCGTTTTCCCAACTTGAAAGGACCATCCTCTACCTTCTCACCCGACCCAGGGCTACGATGCAGATCGGCCCGACTGGAAACCGGGGCAGTGA")
 
     def test_get_functions_pathways_go(self):
         """ Test the scraping of the "Function/Pathways/GO" tab on pseudomonas.com."""
@@ -413,7 +429,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         check_keys(self, expected_keys, panels['Operons'])
 
         # Check in first operon.
-        expected_keys = ['Name', 'Genes', 'Evidence', 'References', 'Cross-References']
+        expected_keys = ['Genes', 'Meta', 'References']
         check_keys(self, expected_keys, panels['Operons']['PA14_67230-PA14_67220-PA14_67210-PA14_67200-PA14_67190-PA14_67180'])
 
     def test_get_transposon_insertions_missing(self):
@@ -439,7 +455,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         panels = scraper._get_transposon_insertions("https://www.pseudomonas.com/feature/show/?id=1661780")
 
         # Check keys.
-        expected_keys = ['Transposon Insertions']
+        expected_keys = ['Transposon Insertions in UCBPP-PA14', 'Transposon Insertions in Orthologs']
         check_keys(self, expected_keys, panels)
 
     def test_get_updates_missing(self):

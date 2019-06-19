@@ -21,6 +21,9 @@ import xmltodict
 # Configure logging.
 logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.INFO)
 
+# Constrain pandas assignments:
+pandas.set_option('mode.chained_assignment', 'raise')
+
 # Define the query datastructure.
 pdc_query = namedtuple('pdc_query',
                        field_names=('strain', 'feature', 'organism'),
@@ -234,7 +237,7 @@ class PseudomonasDotComScraper():
         panels["Motifs"] = self._get_motifs(feature_url)
         panels["Operons"] = self._get_operons(feature_url)
         panels["Transposon Insertions"] = self._get_transposon_insertions(feature_url)
-        panels["Annotation Updates"] = self._get_updates(feature_url)
+        panels["Updates"] = self._get_updates(feature_url)
         panels["Orthologs"] = self._get_orthologs(feature_url)
 
         # All done, return.
@@ -259,19 +262,19 @@ class PseudomonasDotComScraper():
         # Empty return dict.
         overview_panel = dict()
 
-        overview_panel["Gene Feature Overview"] = _pandasDF_from_heading(browser, "Gene Feature Overview", 0)
+        overview_panel["Gene Feature Overview"] = _pandasDF_from_heading(browser, "Gene Feature Overview", None)
 
         # Get cross-references with hyperlinks.
         overview_panel["Cross-References"] = self._get_cross_references(url)
 
         # Get remaining tables.
-        overview_panel["Product"] = _pandasDF_from_heading(browser, "Product", 0)
+        overview_panel["Product"] = _pandasDF_from_heading(browser, "Product", None)
 
         # Get subcellular localizations.
         overview_panel["Subcellular Localizations"] = self._get_subcellular_localizations(browser)
         overview_panel["Pathogen Association Analysis"] = _pandasDF_from_heading(browser, "Pathogen Association Analysis", 0)
-        overview_panel["Orthologs/Comparative Genomics"] = _pandasDF_from_heading(browser, "Orthologs/Comparative Genomics", 0)
-        overview_panel["Interactions"] = _pandasDF_from_heading(browser, "Interactions", 0)
+        #overview_panel["Orthologs/Comparative Genomics"] = _pandasDF_from_heading(browser, "Orthologs/Comparative Genomics", 0)
+        #overview_panel["Interactions"] = _pandasDF_from_heading(browser, "Interactions", 0)
         overview_panel["References"] = _pandas_references(browser)
 
         return overview_panel
@@ -279,8 +282,8 @@ class PseudomonasDotComScraper():
     def _get_cross_references(self, url):
         """ Extract the cross-references table with hyperlinks from the feature overview tab. """
         # Get ovierview tab.
-        operons_url = url + "&view=overview"
-        soup = BeautifulSoup(guarded_get(operons_url), 'lxml')
+        cross_references_url = url + "&view=overview"
+        soup = BeautifulSoup(guarded_get(cross_references_url), 'lxml')
 
         # Navigate to heading.
         table_heading = "Cross-References"
@@ -323,10 +326,8 @@ class PseudomonasDotComScraper():
         # Setup the return dataframe.
         df = pandas.DataFrame(numpy.empty((len(ref_types), 0)))
 
-        # Index.
-        df.index = ref_types
-
         # Columns.
+        df['type'] = ref_types
         df['id'] = ref_ids
         df['url'] = ref_urls
 
@@ -347,7 +348,48 @@ class PseudomonasDotComScraper():
         sequence_url = url + "&view=sequence"
         browser = BeautifulSoup(guarded_get(sequence_url), 'lxml')
 
-        df = _pandasDF_from_heading(browser, "Sequence Data", 0).drop(index="Strain").drop(columns=2)
+        df = _pandasDF_from_heading(browser, "Sequence Data", None).drop(index=0).drop(columns=2)
+
+        # Strip non-sequence information from tables.
+        # Replace whitespace by '_' in row title column.
+
+        # Genes
+        dna_pattern = re.compile(r"^DNA.+$")
+        dna_tags = [idx for idx in df[0] if dna_pattern.match(idx)]
+
+        # Setup empty dataframe to store cleaned up sequences.
+        blast_pattern = re.compile(r"BLAST.+$")
+        space_pattern = re.compile(r"[A-Z]\s[A-Z]")
+        separator_pattern = re.compile(r"([a-z,1-9])\s([A-Z]+)\s*$")
+
+        # Go though nucleotide sequences.
+        for tag in dna_tags:
+
+            # Get raw sequence.
+            seq = df.loc[df[0]==tag, 1].values[0]
+
+            # Remove blast links
+            seq = blast_pattern.sub("",seq)
+
+            # Remove spaces
+            seq = space_pattern.sub("", seq)
+
+            # Separate header and sequence.
+            seq = separator_pattern.sub(r'\1\n\2', seq)
+
+            # Store in dataframe
+            df.loc[df[0]==tag, 1] = seq
+
+        # amino acid tag
+        aaseq = df.loc[df[0]=="Amino Acid Sequence", 1].values[0]
+
+        # Strip blast porn
+        aaseq = blast_pattern.sub("", aaseq)
+        aaseq = space_pattern.sub("", aaseq)
+        aaseq = separator_pattern.sub(r'\1\n\2', aaseq)
+
+
+        df.loc[df[0]=="Amino Acid Sequence", 1] = aaseq
 
         return df
 
@@ -438,13 +480,20 @@ class PseudomonasDotComScraper():
             name = tabs.sub("", name)
             name = name.split("\n")[2]
 
-            operon_dict['Name'] = name
             operon_dict['Genes'] = tmp[1]
 
+            # Collect metadata (evidence and cross-references)
+            meta = {}
             evidence = str(operon.find(string=re.compile('Evidence')).find_next('div').text)
             evidence = re.compile("[\t\n\s\.]").sub("", evidence)
             evidence = re.sub("\.", "", evidence)
-            operon_dict['Evidence'] = evidence
+            meta["Evidence"] = evidence
+
+            cross_references = str(operon.find(string=re.compile("Cross-References")).find_next('div').find_next('div').text)
+            cross_references = re.compile("[\t\n\s]").sub("", cross_references)
+            meta["Cross-References"] =  cross_references
+
+            operon_dict["Meta"] = pandas.DataFrame([meta])
 
             references = operon.find_all(string=re.compile('PubMed ID'))
             refs = []
@@ -455,19 +504,14 @@ class PseudomonasDotComScraper():
                 pubmed_id = str(pubmed.text)
                 pubmed_id = re.compile('[\t\n\s]').sub('', pubmed_id)
 
-                lookup = PubMedLookup(pubmed_id, '')
-                citation = Publication(lookup).cite()
-
-                refs.append(dict(pubmed_url=pubmed_url, citation=citation))
+                refs.append(dict(pubmed_id=pubmed_id))
             operon_dict['References'] = pandas.DataFrame(refs)
-
-            cross_references = str(operon.find(string=re.compile("Cross-References")).find_next('div').find_next('div').text)
-            cross_references = re.compile("[\t\n\s]").sub("", cross_references)
-            operon_dict['Cross-References'] = cross_references
 
             operons_dict[name] = operon_dict
 
-        # Loop over headings and get table as pandas.pandas.DataFrame.
+
+
+        # Loop over headings and get table as pandas.DataFrame.
         return operons_dict
 
     def _get_transposon_insertions(self, url):
@@ -487,21 +531,54 @@ class PseudomonasDotComScraper():
 
         table_heading = "Transposon Insertions"
 
-        # Navigate to heading.
+        # Get all headings with "Transposons" in them.
         headings = browser.find_all('h3', string=re.compile(table_heading))
+
+        # Setup return dict.
         transposon_dict = dict()
+
+        # Loop over transposons and extract tables.
         for h in headings:
+
+            # Have to reformat the key (get rid of \t\n sequences and whitespaces at beginning and end of lines.
+            key = h.get_text()
+            key = re.compile(r'\n+').sub(" ", key)
+            key = re.compile(r'\t+').sub(" ", key)
+            key = re.compile(r'\s+').sub(" ", key)
+            key = re.compile(r'^\s').sub("", key)
+            key = re.compile(r'\s$').sub("", key)
+
+            # Every table goes in a dict by itself.
+            transposon_dict[key] = None
+
+            # Get table from the parent if exists. If not, setup empty frame.
             parent = h.parent
             try:
-                td = pandas.read_html(str(parent))
+                tables = pandas.read_html(str(parent))
             except ValueError:
-                td = [pandas.DataFrame()]
+                tables = [pandas.DataFrame()]
                 logging.warning("No table found, will return empty DataFrame.")
-            key = h.get_text()
-            key = re.compile("[\n\t]").sub("", key)
+            except:
+                raise
 
-            transposon_dict[key] = td
+            # Now insert each table into the return dictionary.
+            list_of_dicts = []
+            for i,table in enumerate(tables):
+                if table.empty:
+                    continue
+                # Get rid of last column full of NaNs.
+                if len(table.columns) > 2:
+                    table = table.drop(columns=2)
 
+                # Extract data to re-insert into dictionary from which to create the final frame.
+                keys = table.loc[:,0]
+                values = table.loc[:,1]
+                table_dict = OrderedDict(zip(keys, values))
+                list_of_dicts.append(table_dict)
+
+            transposon_dict[key] = pandas.DataFrame(list_of_dicts)
+
+        # Return
         return transposon_dict
 
     def _get_updates(self, url):
@@ -520,9 +597,9 @@ class PseudomonasDotComScraper():
         browser = BeautifulSoup(guarded_get(updates_url), 'lxml')
 
         heading = browser.find('h3', string=re.compile('Annotation Updates'))
-        annotation_table = pandas.read_html(str(heading.parent))
+        updates = {"Annotation Updates" : pandas.read_html(str(heading.parent))[0]}
 
-        return annotation_table
+        return updates
 
     def _get_subcellular_localizations(self, soup):
         """ Parse the 'Subcellular localizations' table in the overview section.
@@ -611,9 +688,13 @@ class PseudomonasDotComScraper():
         ortholog_cluster_csv = 'http://pseudoluge.pseudomonas.com/named/download/csv?gene_id={}'.format(pdc_id)
 
         try:
-            panel["Ortholog cluster"] = pandas.read_csv(ortholog_cluster_csv)
+            df = pandas.read_csv(ortholog_cluster_csv)
+            # Remove html links (redundant because GI is present).
+            df = df.drop(columns="NCBI GI link (Strain 1)").drop(columns="NCBI GI link (Strain 2)")
+            panel["Ortholog cluster"] = df
+
         except:
-            print("Could not read csv resource. Will return empty dataframe.")
+            logging.warning("Could not read csv resource. Will return empty dataframe.")
             panel["Ortholog cluster"] = pandas.DataFrame()
 
         return panel
@@ -712,7 +793,7 @@ def _pandasDF_from_heading(soup, table_heading, index_column=0):
 
     # Get table html string.
     table_ht = str(soup.find('h3', string=re.compile(table_heading)).find_next())
-    pattern = re.compile('[\t\n]')
+    pattern = re.compile('[\t]')
     table_ht = pattern.sub("", table_ht)
 
     try:
