@@ -262,15 +262,16 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
                         "Motifs",
                         "Operons",
                         "Transposon Insertions",
-                        "Annotation Updates",
+                        "Updates",
                         "Orthologs",
                         ]
 
         check_keys(self, expected_keys, results["sbw25__pflu0916"])
 
         # Check content.
-        present_indices = results['sbw25__pflu0916']['Overview']['Gene Feature Overview'].index
-        for idx in ['Strain', 'Locus_Tag', 'Name', 'Replicon', 'Genomic_location']:
+        present_indices = results['sbw25__pflu0916']['Overview']['Gene Feature Overview'].loc[:,0].values
+
+        for idx in ['Strain', 'Locus Tag', 'Name', 'Replicon', 'Genomic location']:
             self.assertIn(idx, present_indices)
 
     def test_dict_to_pdc_query (self):
@@ -290,14 +291,12 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
 
         scraper = setup_scraper_complete()
 
-        panels = dict()
         soup =  BeautifulSoup(guarded_get("https://www.pseudomonas.com/feature/show/?id=1466562"), 'lxml')
-        scraper._get_subcellular_localizations(soup, panels)
+        panels = scraper._get_subcellular_localizations(soup)
 
-        self.assertIsInstance(panels["Subcellular localizations"], dict)
+        self.assertIsInstance(panels, dict)
         expected_keys = ["Individual Mappings", "Additional evidence"]
-        check_keys(self, expected_keys, panels["Subcellular localizations"])
-
+        check_keys(self, expected_keys, panels)
 
     def test_get_overview(self):
         """ Test the scraping of the "Overview" tab on pseudomonas.com."""
@@ -312,8 +311,6 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
                          "Product",
                          "Subcellular Localizations",
                          "Pathogen Association Analysis",
-                         "Orthologs/Comparative Genomics",
-                         "Interactions",
                          "References",
                          ]
 
@@ -321,7 +318,8 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
 
         # Check a reference.
         cross_references = overview_panel["Cross-References"]
-        refseq = cross_references.loc["RefSeq"].iloc[0]
+
+        refseq = cross_references.loc[cross_references.loc[:,'type']=="RefSeq",'id'].loc[0]
 
         self.assertEqual(refseq, "YP_793558.1")
 
@@ -420,17 +418,13 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         # Get sequences tables.
         panels = scraper._get_operons("https://www.pseudomonas.com/feature/show/?id=1661780")
 
-        # Check keys.
-        expected_keys = ['Operons']
+        # Check in first operon.
+        expected_keys = ['PA14_67230-PA14_67220-PA14_67210-PA14_67200-PA14_67190-PA14_67180']
         check_keys(self, expected_keys, panels)
 
         # Check in first operon.
-        expected_keys = ['PA14_67230-PA14_67220-PA14_67210-PA14_67200-PA14_67190-PA14_67180']
-        check_keys(self, expected_keys, panels['Operons'])
-
-        # Check in first operon.
         expected_keys = ['Genes', 'Meta', 'References']
-        check_keys(self, expected_keys, panels['Operons']['PA14_67230-PA14_67220-PA14_67210-PA14_67200-PA14_67190-PA14_67180'])
+        check_keys(self, expected_keys, panels['PA14_67230-PA14_67220-PA14_67210-PA14_67200-PA14_67190-PA14_67180'])
 
     def test_get_transposon_insertions_missing(self):
         """ Test the scraping of the "Transposon Insertions" tab on pseudomonas.com."""
@@ -442,7 +436,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         panels = scraper._get_transposon_insertions(scraper._get_feature_url(scraper.query[0]))
 
         # Check keys.
-        expected_keys = ['Transposon Insertions']
+        expected_keys = ['Transposon Insertions in SBW25', 'Transposon Insertions in Orthologs']
         check_keys(self, expected_keys, panels)
 
     def test_get_transposon_insertions_in_ortholog(self):
@@ -511,7 +505,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         panels = scraper._get_orthologs("https://www.pseudomonas.com/feature/show/?id=1661780")
 
         # Check keys.
-        expected_keys = ['Orthologs']
+        expected_keys = ['Ortholog cluster', 'Ortholog group', 'Ortholog xml']
 
         check_keys(self, expected_keys, panels)
 
@@ -525,7 +519,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         panels = scraper._get_orthologs("https://www.pseudomonas.com/feature/show/?id=1459889")
 
         # Check keys.
-        expected_keys = ['Ortholog cluster', 'Ortholog group', 'Orthoxml']
+        expected_keys = ['Ortholog cluster', 'Ortholog group', 'Ortholog xml']
 
         check_keys(self, expected_keys, panels)
 
@@ -561,12 +555,12 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         results = scraper.results['UCBPP-PA14__PA14_67210']
 
         expected_keys = ["Overview",
-                         "Sequence Data",
+                         "Sequences",
                          "Function/Pathways/GO",
                          "Motifs",
                          "Operons",
                          "Transposon Insertions",
-                         "Annotation Updates",
+                         "Updates",
                          "Orthologs",
                          ]
 
@@ -577,10 +571,8 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
                          "Gene Feature Overview",
                          "Cross-References",
                          "Product",
-                         "Subcellular localization",
+                         "Subcellular Localizations",
                          "Pathogen Association Analysis",
-                         "Orthologs/Comparative Genomics",
-                         "Interactions",
                          "References",
                          ]
         check_keys(self, expected_keys, overview)
@@ -697,4 +689,5 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
             self.assertIsInstance(query_results[xk], pandas.DataFrame)
 
 if __name__ == "__main__":
+
     unittest.main()

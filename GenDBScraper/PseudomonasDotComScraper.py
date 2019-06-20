@@ -19,7 +19,7 @@ import tempfile
 import xmltodict
 
 # Configure logging.
-logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.INFO)
+logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.WARNING)
 
 # Constrain pandas assignments:
 pandas.set_option('mode.chained_assignment', 'raise')
@@ -557,7 +557,8 @@ class PseudomonasDotComScraper():
                 table = pandas.read_html(str(parent))[0]
             except ValueError:
                 table = pandas.DataFrame()
-                logging.warning("No table found, will return empty DataFrame.")
+                logging.warning("No transposon table found, will return empty DataFrame.")
+                continue
             except:
                 raise
 
