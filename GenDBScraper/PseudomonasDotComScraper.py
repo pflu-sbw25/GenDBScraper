@@ -554,22 +554,28 @@ class PseudomonasDotComScraper():
             # Get table from the parent if exists. If not, setup empty frame.
             parent = h.parent
             try:
-                tables = pandas.read_html(str(parent))
+                table = pandas.read_html(str(parent))[0]
             except ValueError:
-                tables = [pandas.DataFrame()]
+                table = pandas.DataFrame()
                 logging.warning("No table found, will return empty DataFrame.")
             except:
                 raise
 
+            # Cleanup.
+            if len(table.columns) > 2:
+                table.drop(columns=2, inplace=True)
+
+            # Drop rows with NaNs.
+            table.dropna(inplace=True)
+
+            # PDC tables are all merged, we have to separate them by identifying the unique keys in column 0.
+            number_of_indices = len(table.index)
+            number_of_unique_indices = len(set(table.loc[:,0]))
+
+            tables = [table[:i+number_of_unique_indices] for i in range(number_of_indices//number_of_unique_indices)]
             # Now insert each table into the return dictionary.
             list_of_dicts = []
             for i,table in enumerate(tables):
-                if table.empty:
-                    continue
-                # Get rid of last column full of NaNs.
-                if len(table.columns) > 2:
-                    table = table.drop(columns=2)
-
                 # Extract data to re-insert into dictionary from which to create the final frame.
                 keys = table.loc[:,0]
                 values = table.loc[:,1]

@@ -445,6 +445,23 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         expected_keys = ['Transposon Insertions']
         check_keys(self, expected_keys, panels)
 
+    def test_get_transposon_insertions_in_ortholog(self):
+        """ Test the scraping of the "Transposon Insertions" tab on pseudomonas.com with TIs in orthologs."""
+
+        # Get test scraper.
+        scraper = setup_scraper_complete()
+
+        # Get sequences tables.
+        panels = scraper._get_transposon_insertions("https://www.pseudomonas.com/feature/show/?id=1661770")
+
+        # Check keys.
+        expected_keys = ['Transposon Insertions in UCBPP-PA14', 'Transposon Insertions in Orthologs']
+        check_keys(self, expected_keys, panels)
+
+        ti_orth = panels['Transposon Insertions in Orthologs']
+        self.assertEqual(len(ti_orth.columns), 7)
+        self.assertEqual(len(ti_orth.index), 2)
+
     def test_get_transposon_insertions(self):
         """ Test the scraping of the "Transposon Insertions" tab on pseudomonas.com."""
 
