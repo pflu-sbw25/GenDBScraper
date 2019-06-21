@@ -456,6 +456,14 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         self.assertEqual(len(ti_orth.columns), 7)
         self.assertEqual(len(ti_orth.index), 2)
 
+        # Mutant IDs should be different
+        self.assertEqual(ti_orth.loc[0,'Mutant ID'], 'UWGC: PW9532')
+        self.assertEqual(ti_orth.loc[1,'Mutant ID'], 'UWGC: PW9531')
+
+        # Genetic positions should be different
+        self.assertEqual(ti_orth.loc[0,'Genomic Position'], '5722847')
+        self.assertEqual(ti_orth.loc[1,'Genomic Position'], '5723351')
+
     def test_get_transposon_insertions(self):
         """ Test the scraping of the "Transposon Insertions" tab on pseudomonas.com."""
 
