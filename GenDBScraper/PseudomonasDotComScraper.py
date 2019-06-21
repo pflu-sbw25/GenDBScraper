@@ -19,7 +19,7 @@ import tempfile
 import xmltodict
 
 # Configure logging.
-logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.WARNING)
+logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.INFO)
 
 # Constrain pandas assignments:
 pandas.set_option('mode.chained_assignment', 'raise')
@@ -569,11 +569,13 @@ class PseudomonasDotComScraper():
             # Drop rows with NaNs.
             table.dropna(inplace=True)
 
-            # PDC tables are all merged, we have to separate them by identifying the unique keys in column 0.
+            # Re-index
             number_of_indices = len(table.index)
-            number_of_unique_indices = len(set(table.loc[:,0]))
+            table.index = range(number_of_indices)
 
-            tables = [table[:i+number_of_unique_indices] for i in range(number_of_indices//number_of_unique_indices)]
+            number_of_unique_indices = len(set(table.loc[:,0]))
+            # Pandas indexing is inclusive upper bound.
+            tables = [table.iloc[i*number_of_unique_indices:(i+1)*number_of_unique_indices] for i in range(number_of_indices//number_of_unique_indices)]
             # Now insert each table into the return dictionary.
             list_of_dicts = []
             for i,table in enumerate(tables):
