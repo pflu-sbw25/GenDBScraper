@@ -136,13 +136,33 @@ def get_grids(data_tables):
                 for column_def in grid_options['columnDefs']:
                     pattern = re.compile(r"^Unnamed: 7$",flags=re.IGNORECASE)
                     if pattern.match(column_def['field']):
-                        column_def['cellRenderer'] = button_js()
+                        column_def['cellRenderer'] = """function(params) {
+    let v = params.value;
+    function clicked(){
+        let new_cell = Jupyter.notebook.insert_cell_below().set_text("This feature is not implemented yet.");
+    }
+
+    let b = document.createElement('button');
+    b.innerHTML = v;
+    b.style = "background-color:bisque; margin:1px 10px 1px 2px;";
+    b.title = "Open gene table";
+    b.addEventListener("click", function (){clicked()}, false);
+    // b.addEventListener("click", function (){clicked()}, false);
+
+    return b;
+} """
 
             if title.lower() == 'references':
                 for column_def in grid_options['columnDefs']:
                     pattern = re.compile(r"^Pubmed_id$",flags=re.IGNORECASE)
                     if pattern.match(column_def['field']):
                         column_def['cellRenderer'] = """function(params) { return '<a href=http://ncbi.nlm.nih.gov/pubmed/'+params.value+' target=_blank>'+params.value+'</a>'; }"""
+
+            js_pre_helpers = []
+            js_helpers_custom = """ """
+            #js_pre_grid = [""" window.go = gridOptions; window.gd = gridData; function geneCellRenderer(params){ html = '<a href="PA14.ipynb">params.value</a>'; return html; } gridOptions.columnDefs[-1]['cellRenderer']= geneCellRenderer; """]
+            js_pre_grid = []
+            js_post_grid = []
 
             g = ipyaggrid.Grid(grid_data = df,
                                grid_options=grid_options,
@@ -163,6 +183,10 @@ def get_grids(data_tables):
                                export_to_df=True,
                                hide_grid=False,
                                menu=None,
+                               js_pre_helpers=js_pre_helpers,
+                               js_helpers_custom=js_helpers_custom,
+                               js_pre_grid=js_pre_grid,
+                               js_post_grid=js_post_grid,
                                )
 
             children.append(g)
@@ -307,5 +331,3 @@ def run_stdb(locus_tag):
     display(image_widget)
     show(column(stdb_tabs, width=500))
 
-def button_js() :
-    return """function(params) { return '<html><head> <!-- Load require.js. Delete this if your page already loads require.js --> <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" crossorigin="anonymous"></script> <script src="https://unpkg.com/@jupyter-widgets/html-manager@*/dist/embed-amd.js" crossorigin="anonymous"></script> <script type="application/vnd.jupyter.widget-state+json"> { "version_major": 2, "version_minor": 0, "state": { "93d6f52be98844e4b1eeb17a7ad85c4f": { "model_name": "LayoutModel", "model_module": "@jupyter-widgets/base", "model_module_version": "1.1.0", "state": {} }, "293f602eab044b88abd08c4ef6843c9c": { "model_name": "ButtonStyleModel", "model_module": "@jupyter-widgets/controls", "model_module_version": "1.4.0", "state": {} }, "95fd2b96c1c647f0ae8e943610d7199d": { "model_name": "ButtonModel", "model_module": "@jupyter-widgets/controls", "model_module_version": "1.4.0", "state": { "description": "pa14_67150", "layout": "IPY_MODEL_93d6f52be98844e4b1eeb17a7ad85c4f", "style": "IPY_MODEL_293f602eab044b88abd08c4ef6843c9c" } } } } </script> </head> <body> <script type="application/vnd.jupyter.widget-view+json"> { "version_major": 2, "version_minor": 0, "model_id": "9cc53165cd41492ebe5e7c7ef485f66f" } </script> <script type="application/vnd.jupyter.widget-view+json"> { "version_major": 2, "version_minor": 0, "model_id": "95fd2b96c1c647f0ae8e943610d7199d" } </script> </body> </html>'; } """
