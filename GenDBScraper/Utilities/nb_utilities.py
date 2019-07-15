@@ -136,7 +136,7 @@ def get_grids(data_tables):
                 for column_def in grid_options['columnDefs']:
                     pattern = re.compile(r"^Unnamed: 7$",flags=re.IGNORECASE)
                     if pattern.match(column_def['field']):
-                        column_def['cellRenderer'] = """function(params) {
+                        column_def['cellRenderer'] = """function(params) { return '<a href=
     let v = params.value;
     function clicked(){
         let new_cell = Jupyter.notebook.insert_cell_below().set_text("This feature is not implemented yet.");
