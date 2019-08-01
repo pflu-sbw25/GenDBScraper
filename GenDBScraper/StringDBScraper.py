@@ -16,7 +16,7 @@ import re
 import tempfile
 
 # Configure logging.
-logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.INFO)
+logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.DEBUG)
 
 # Define the query datastructure.
 stringdb_query = namedtuple(
