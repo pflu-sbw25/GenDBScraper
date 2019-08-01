@@ -340,9 +340,33 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
                 "DNA Sequence Downstream of Gene",
                 "Amino Acid Sequence",
                 ]
-        indices = list(panel[0])
+        indices = list(panel["Type"])
         for ei in expected_indices:
             self.assertIn(ei, indices)
+
+    def test_get_sequence_links(self):
+        """ Test that links to blast and cdd services are reported."""
+
+        # Get test scraper.
+        scraper = setup_scraper_complete()
+
+        # Get sequences tables.
+        panel = scraper._get_sequences("https://www.pseudomonas.com/feature/show/?id=1661780" )
+
+        # Check keys.
+        self.assertIsInstance(panel, pandas.DataFrame)
+        expected_columns = [
+                "Type",
+                "Sequence",
+                "BLAST",
+                "Diamond-BLAST",
+                "NCBI-CDD"
+                ]
+
+        columns = list(panel.columns)
+        for ec in expected_columns:
+            self.assertIn(ec, columns)
+
 
     def test_get_sequence_fasta(self):
         """ Test the scraping of the "Sequences" tab on pseudomonas.com and seqio parsing"""
@@ -354,7 +378,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         panel = scraper._get_sequences("https://www.pseudomonas.com/feature/show/?id=1661780" )
 
         # Check gene.
-        stream = StringIO(panel.loc[panel[0] == "DNA Sequence for Gene",1].values[0])
+        stream = StringIO(panel.loc[panel["Type"] == "DNA Sequence for Gene", "Sequence"].values[0])
         gene_record = SeqIO.read(stream, 'fasta')
 
         self.assertEqual(gene_record.seq, "ATGCGAATCTCTATTGGTCTATTCATTTTCCTGTTGAGTTTCGGAGTTCCCGCTATGGCCGACAGTAAGCCGTTCATCTGCGTTAATGAGAAAGACCATGCCACCTCTCGATCCCCAGGCCGATGCCTGGTATCGGGAAGCAGTTGCGCTAGCTAAGCCTGACGCCTTGCGTCCTTGGGGACGTATTGTGGACTTATAGTAAGGCAGTTGAGCGTGGGCATTGGAAGGCGATGCATAATTTGGCGAATCTTTATCGCACAGGGTGGCCCGGAGGGGTAGAAAAAGATACGCAGAACATTGGATCTCTATCAAAAGATGATCGATCTGGAGGTGCCCCAAGGGTTCTATGATATGGGAGCAATGATCGGCAATCGTGCAGGGGTCATGAATCCTAACTGACGGGCTTAGTTTTCTTAATAAGGCTGCTAGCCTAGGAAATCCGCCGGCATTAACCGAGCTAGGTAAGCTCTATATATATGTGGCCAAAAAAAGATTTGGGGTTGGCGTATACTCACTGTGCTGCTAGCCAGGGCTATGCGCCGGCTAGTTATGAGTTGGGGGCGTATTACAAGATAGTAGAGCATAATTTCAAAAGCATTGGGTTATTATCAGGCGTCAGTCTCTCAGGGCGGAAAGAGTGCGGCTTTATTTATCTCCGGTGTTTTTGATAAAGCCAGTCCTGATGTCTAGAATGTGGTACGCACCCGATGAGAAATTGCGCAAATTATATGATGGTATTTACGATAAACTTGCCGCTGATCCTGATTTTCGTTTTCCCAACTTGAAAGGACCATCCTCTACCTTCTCACCCGACCCAGGGCTACGATGCAGATCGGCCCGACTGGAAACCGGGGCAGTGA")

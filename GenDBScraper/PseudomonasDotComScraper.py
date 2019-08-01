@@ -350,12 +350,18 @@ class PseudomonasDotComScraper():
 
         df = _pandasDF_from_heading(browser, "Sequence Data", None).drop(index=0).drop(columns=2)
 
+        # Rename columns.
+        df.rename(columns={0: "Type", 1: "Sequence"}, inplace=True)
+        df.insert(2, "BLAST", [""]*4)
+        df.insert(2, "Diamond-BLAST", [""]*4)
+        df.insert(2, "NCBI-CDD", [""]*4)
+
         # Strip non-sequence information from tables.
         # Replace whitespace by '_' in row title column.
 
         # Genes
         dna_pattern = re.compile(r"^DNA.+$")
-        dna_tags = [idx for idx in df[0] if dna_pattern.match(idx)]
+        dna_tags = [idx for idx in df["Type"] if dna_pattern.match(idx)]
 
         # Setup empty dataframe to store cleaned up sequences.
         blast_pattern = re.compile(r"BLAST.+$")
@@ -366,7 +372,7 @@ class PseudomonasDotComScraper():
         for tag in dna_tags:
 
             # Get raw sequence.
-            seq = df.loc[df[0]==tag, 1].values[0]
+            seq = df.loc[df["Type"]==tag, "Sequence"].values[0]
 
             # Remove blast links
             seq = blast_pattern.sub("",seq)
@@ -378,10 +384,12 @@ class PseudomonasDotComScraper():
             seq = separator_pattern.sub(r'\1\n\2', seq)
 
             # Store in dataframe
-            df.loc[df[0]==tag, 1] = seq
+            df.loc[df["Type"]==tag, "Sequence"] = seq
+            df.loc[df["Type"]==tag, "BLAST"] = "http://pseudomonas.com/blast/setnblast?sequence={0:s}&program=blastn".format(seq)
+            df.loc[df["Type"]==tag, "Diamond-BLAST"] = "http://pseudomonas.com/blast/setdiamondblastx?sequence={0:s}".format(seq)
 
         # amino acid tag
-        aaseq = df.loc[df[0]=="Amino Acid Sequence", 1].values[0]
+        aaseq = df.loc[df["Type"]=="Amino Acid Sequence", "Sequence"].values[0]
 
         # Strip blast porn
         aaseq = blast_pattern.sub("", aaseq)
@@ -389,7 +397,11 @@ class PseudomonasDotComScraper():
         aaseq = separator_pattern.sub(r'\1\n\2', aaseq)
 
 
-        df.loc[df[0]=="Amino Acid Sequence", 1] = aaseq
+        df.loc[df["Type"]=="Amino Acid Sequence", "Sequence"] = aaseq
+        # Add links.
+        df.loc[df["Type"]=="Amino Acid Sequence", "BLAST"] = "http://pseudomonas.com/blast/setnblast?sequence={0:s}&program=blastp".format(aaseq)
+        df.loc[df["Type"]=="Amino Acid Sequence", "Diamond-BLAST"] = "http://pseudomonas.com/blast/setdiamondblastp?sequence={0:s}".format(aaseq)
+        df.loc[df["Type"]=="Amino Acid Sequence", "NCBI-CCD"] = "http://www.ncbi.nlm.nih.gov/Structure/cdd/wrpsb.cgi?SEQUENCE={0:s}".format(aaseq)
 
         return df
 
