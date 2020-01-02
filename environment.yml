@@ -1,4 +1,3 @@
-name: pflu
 channels:
   - conda-forge
   - defaults
