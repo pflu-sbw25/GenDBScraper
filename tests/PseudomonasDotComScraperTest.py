@@ -44,7 +44,7 @@ def setup_scraper_incomplete():
     """ Construct a default scraper for testing. """
 
     # Setup the query.
-    query = pdc_query(strain='sbw25', feature='pflu0916')
+    query = pdc_query(strain='SBW25', feature='PFLU0916')
 
     # Fetch results.
     scraper = PseudomonasDotComScraper(query=query)
@@ -94,10 +94,10 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         self.assertEqual(instance._PseudomonasDotComScraper__pdc_url,
                          'https://www.pseudomonas.com'
                          )
-        self.assertIsInstance(instance._PseudomonasDotComScraper__query[0],
+        self.assertIsInstance(instance._PseudomonasDotComScraper__query,
                               pdc_query
                               )
-        self.assertEqual(instance._PseudomonasDotComScraper__query[0].strain,
+        self.assertEqual(instance._PseudomonasDotComScraper__query.strain,
                          'sbw25'
                          )
 
@@ -107,20 +107,20 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         """
 
         # Instantiate.
-        query = pdc_query('sbw25', 'pflu0916')
+        query = pdc_query('SBW25', 'PFLU0916')
         instance = TestedClass(query=query)
 
         # Check correct class provenance.
         self.assertIsInstance(instance, TestedClass)
 
         # Check member attribute.
-        self.assertEqual(instance._PseudomonasDotComScraper__query, [query])
+        self.assertEqual(instance._PseudomonasDotComScraper__query, query)
 
     def test_shaped_constructor_query_dict(self):
         """ Test the shaped constructor (with arguments, query is a dict)."""
 
         # Instantiate.
-        query = {'strain': 'sbw25', 'feature': 'pflu0916'}
+        query = {'strain': 'SBW25', 'feature': 'PFLU0916'}
         instance = TestedClass(query=query)
 
         # Check correct class provenance.
@@ -128,16 +128,14 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
 
         # Check member attribute.
         self.assertEqual(instance._PseudomonasDotComScraper__query,
-                         [
-                             pdc_query(strain='sbw25', feature='pflu0916'),
-                          ]
-                         )
+                             pdc_query(strain='SBW25', feature='PFLU0916'),
+                        )
 
-    def test_query_setter_named_tuple(self):
+    def test_query_setter_namedtuple(self):
         """ Test that the parameter 'query' can be set as a pdc_query."""
 
         # Parameter to test.
-        query = pdc_query(strain='sbw25', feature='pflu0916')
+        query = pdc_query(strain='SBW25', feature='PFLU0916')
 
         # Instantiate.
         instance = TestedClass()
@@ -147,7 +145,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
 
         # Check without using property.
         # Query was internally converted to tuple.
-        self.assertEqual(instance._PseudomonasDotComScraper__query, [query])
+        self.assertEqual(instance._PseudomonasDotComScraper__query, query)
 
     def test_query_setter_list(self):
         """
@@ -155,22 +153,19 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         """
 
         # Parameter to test.
-        queries = [pdc_query(strain='sbw25',
-                             feature='pflu{0:04d}'.format(f))
+        queries = [pdc_query(strain='SBW25',
+                             feature='PFLU{0:04d}'.format(f))
                    for f in range(15, 18)
                    ]
 
         # Instantiate.
-        instance = PseudomonasDotComScraper(query=queries)
-
-        # Check without using property.
-        self.assertEqual(instance._PseudomonasDotComScraper__query, queries)
+        self.assertRaises(TypeError, PseudomonasDotComScraper, queries)
 
     def test_query_setter_dict(self):
         """ Test that the parameter 'query' can be set as a dict."""
 
         # Parameter to test.
-        query = {'strain': 'sbw25', 'feature': 'pflu0916'}
+        query = {'strain': 'SBW25', 'feature': 'PFLU0916'}
 
         # Instantiate.
         instance = TestedClass()
@@ -180,9 +175,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
 
         # Check without using property.
         self.assertEqual(instance._PseudomonasDotComScraper__query,
-                         [
-                             pdc_query(strain='sbw25', feature='pflu0916')
-                         ]
+                             pdc_query(strain='SBW25', feature='PFLU0916')
                          )
 
     def test_query_setter_exceptions(self):
@@ -194,13 +187,13 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         self.assertRaises(TypeError, TestedClass, query)
 
         # Wrong keys (giving strain, feature and organism to query.)
-        query = pdc_query('sbw25', 'pflu0915', 'pseudomonas')
+        query = pdc_query('SBW25', 'PFLU0915', 'pseudomonas')
         self.assertRaises(KeyError, TestedClass, query)
 
-        query = pdc_query('sbw25', organism='pseudomonas')
+        query = pdc_query('SBW25', organism='pseudomonas')
         self.assertRaises(KeyError, TestedClass, query)
 
-        query = pdc_query(feature='pflu0916', organism='pseudomonas')
+        query = pdc_query(feature='PFLU0916', organism='pseudomonas')
         self.assertIsInstance(TestedClass(query), PseudomonasDotComScraper)
 
         # Wrong typed values
@@ -211,18 +204,18 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         """ Test the getter for query. """
 
         # Parameter to test.
-        query = pdc_query(strain='sbw25')
+        query = pdc_query(strain='SBW25')
 
         # Instantiate.
         instance = TestedClass(query)
 
         # Get value.
-        self.assertEqual(instance.query, [query])
+        self.assertEqual(instance.query, query)
 
     def test_connect(self):
         """ Test the connect and connected logic. """
         # Instantiate the class.
-        scraper = PseudomonasDotComScraper(query=pdc_query(strain='sbw25'))
+        scraper = PseudomonasDotComScraper(query=pdc_query(strain='SBW25'))
         # connected should be False.
         self.assertFalse(scraper.connected)
 
@@ -236,7 +229,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         """ Test exception upon connection failure. """
 
         # Instantiate the class.
-        scraper = PseudomonasDotComScraper(query=pdc_query(strain='sbw25'))
+        scraper = PseudomonasDotComScraper(query=pdc_query(strain='SBW25'))
         # Mess up the url.
         scraper._PseudomonasDotComScraper__pdc_url = \
             "https://some.nonexisting.url"
@@ -248,7 +241,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         """ Test that the connected status cannot be set. """
 
         # Instantiate the class.
-        scraper = PseudomonasDotComScraper(query=pdc_query(strain='sbw25'))
+        scraper = PseudomonasDotComScraper(query=pdc_query(strain='SBW25'))
 
         with self.assertRaises(AttributeError):
             scraper.connected = True
@@ -257,7 +250,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         """ Test that the query bails out if not connected to DB."""
 
         # Instantiate the class.
-        scraper = PseudomonasDotComScraper(query=pdc_query(strain='sbw25'))
+        scraper = PseudomonasDotComScraper(query=pdc_query(strain='SBW25'))
 
         # Run the query. This should fail.
         self.assertRaises(RuntimeError, scraper.run_query)
@@ -267,8 +260,8 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
 
         # Instantiate.
         scraper = PseudomonasDotComScraper(
-            query={'strain': 'sbw25',
-                   'feature': 'pflu0916',
+            query={'strain': 'SBW25',
+                   'feature': 'PFLU0916',
                    }
         )
 
@@ -283,33 +276,16 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         self.assertIsInstance(results, dict)
 
         # Check query key:
-        self.assertIn("sbw25__pflu0916", results.keys())
+        self.assertIn("SBW25__PFLU0916", results.keys())
 
         # Check keys.
         expected_keys = ["Overview",
                          "Function/Pathways/GO",
-                         "Sequences",
-                         "Motifs",
                          "Operons",
                          "Transposon Insertions",
-                         "Updates",
-                         "Orthologs",
                          ]
 
-        check_keys(self, expected_keys, results["sbw25__pflu0916"])
-
-        # Check content.
-        present_indices = results['sbw25__pflu0916']['Overview'][
-            'Gene Feature Overview'
-        ].loc[:, 0].values
-
-        for idx in ['Strain',
-                    'Locus Tag',
-                    'Name',
-                    'Replicon',
-                    'Genomic location'
-                    ]:
-            self.assertIn(idx, present_indices)
+        check_keys(self, expected_keys, results["SBW25__PFLU0916"])
 
     def test_dict_to_pdc_query(self):
         """
@@ -317,15 +293,15 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         from a dict.
         """
 
-        query_dict = {'strain': 'sbw25',
-                      'feature': 'pflu0914',
+        query_dict = {'strain': 'SBW25',
+                      'feature': 'PFLU0914',
                       'organism': None}
 
         query_pdc = _dict_to_pdc_query(**query_dict)
 
         self.assertIsInstance(query_pdc, pdc_query)
-        self.assertEqual(query_pdc.strain, 'sbw25')
-        self.assertEqual(query_pdc.feature, 'pflu0914')
+        self.assertEqual(query_pdc.strain, 'SBW25')
+        self.assertEqual(query_pdc.feature, 'PFLU0914')
         self.assertIsNone(query_pdc.organism)
 
     def test_get_subcellular_localizations(self):
@@ -352,33 +328,40 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
             "https://www.pseudomonas.com/feature/show/?id=1661780"
         )
 
-        expected_keys = ["Gene Feature Overview",
-                         "Cross-References",
-                         "Product",
-                         "Subcellular Localizations",
-                         "Pathogen Association Analysis",
-                         "References",
+        expected_keys = ['Strain',
+                         'Locus_Tag',
+                         'Name',
+                         'Replicon',
+                         'Transposon_Mutants',
+                         'Start',
+                         'Stop',
+                         'Strand',
+                         'RefSeq',
+                         'GI',
+                         'Entrez',
+                         'NCBILocusTag',
+                         'Feature_Type',
+                         'Coding_Frame',
+                         'ProductName',
+                         'Synonyms',
+                         'Evidence_for_Translation',
+                         'Charge_(pH_7)',
+                         'Kyte-Doolittle_Hydrophobicity_Value',
+                         'Molecular_Weight_(kDa)',
+                         'Isoelectric_Point_(pI)',
+                         'pubmed_references'
                          ]
 
         check_keys(self, expected_keys, overview_panel)
 
-        # Check a reference.
-        cross_references = overview_panel["Cross-References"]
 
-        print(cross_references)
-        refseq = cross_references["id"]['RefSeq']
+        refseq = overview_panel['RefSeq']
         self.assertEqual(refseq, "YP_793558.1")
 
-        product = overview_panel["Product"]
-        product_name = product["ProductName"]
-        self.assertEqual(product_name,
-                         "type VI secretion lipase immunity protein,\
-                         Tli5b1 Product Name Confidence: Class 1"
+        product = overview_panel["ProductName"]
+        self.assertEqual(product,
+                         """type VI secretion lipase immunity protein, Tli5b1 Product Name Confidence: Class 1"""
                          )
-
-        self.assertIsInstance(overview_panel["Gene Feature Overview"], dict)
-        self.assertIsInstance(cross_references, dict)
-        self.assertIsInstance(product, dict)
 
     def test_get_sequence(self):
         """ Test the scraping of the "Sequences" tab on pseudomonas.com."""
@@ -420,23 +403,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         gene_record = SeqIO.read(stream, 'fasta')
 
         self.assertEqual(gene_record.seq,
-                         "ATGCGAATCTCTATTGGTCTATTCATTTTCCTGTTGAGTTTCGGAGTTCCC\
-                         GCTATGGCCGACAGTAAGCCGTTCATCTGCGTTAATGAGAAAGACCATGCCA\
-                         CCTCTCGATCCCCAGGCCGATGCCTGGTATCGGGAAGCAGTTGCGCTAGCTA\
-                         AGCCTGACGCCTTGCGTCCTTGGGGACGTATTGTGGACTTATAGTAAGGCAG\
-                         TTGAGCGTGGGCATTGGAAGGCGATGCATAATTTGGCGAATCTTTATCGCAC\
-                         AGGGTGGCCCGGAGGGGTAGAAAAAGATACGCAGAACATTGGATCTCTATCA\
-                         AAAGATGATCGATCTGGAGGTGCCCCAAGGGTTCTATGATATGGGAGCAATG\
-                         ATCGGCAATCGTGCAGGGGTCATGAATCCTAACTGACGGGCTTAGTTTTCTT\
-                         AATAAGGCTGCTAGCCTAGGAAATCCGCCGGCATTAACCGAGCTAGGTAAGC\
-                         TCTATATATATGTGGCCAAAAAAAGATTTGGGGTTGGCGTATACTCACTGTG\
-                         CTGCTAGCCAGGGCTATGCGCCGGCTAGTTATGAGTTGGGGGCGTATTACAA\
-                         GATAGTAGAGCATAATTTCAAAAGCATTGGGTTATTATCAGGCGTCAGTCTC\
-                         TCAGGGCGGAAAGAGTGCGGCTTTATTTATCTCCGGTGTTTTTGATAAAGCC\
-                         AGTCCTGATGTCTAGAATGTGGTACGCACCCGATGAGAAATTGCGCAAATTA\
-                         TATGATGGTATTTACGATAAACTTGCCGCTGATCCTGATTTTCGTTTTCCCA\
-                         ACTTGAAAGGACCATCCTCTACCTTCTCACCCGACCCAGGGCTACGATGCAG\
-                         ATCGGCCCGACTGGAAACCGGGGCAGTGA"
+                         "ATGCGAATCTCTATTGGTCTATTCATTTTCCTGTTGAGTTTCGGAGTTCCCGCTATGGCCGACAGTAAGCCGTTCATCTGCGTTAATGAGAAAGACCATGCCACCTCTCGATCCCCAGGCCGATGCCTGGTATCGGGAAGCAGTTGCGCTAGCTAAGCCTGACGCCTTGCGTCCTTGGGGACGTATTGTGGACTTATAGTAAGGCAGTTGAGCGTGGGCATTGGAAGGCGATGCATAATTTGGCGAATCTTTATCGCACAGGGTGGCCCGGAGGGGTAGAAAAAGATACGCAGAACATTGGATCTCTATCAAAAGATGATCGATCTGGAGGTGCCCCAAGGGTTCTATGATATGGGAGCAATGATCGGCAATCGTGCAGGGGTCATGAATCCTAACTGACGGGCTTAGTTTTCTTAATAAGGCTGCTAGCCTAGGAAATCCGCCGGCATTAACCGAGCTAGGTAAGCTCTATATATATGTGGCCAAAAAAAGATTTGGGGTTGGCGTATACTCACTGTGCTGCTAGCCAGGGCTATGCGCCGGCTAGTTATGAGTTGGGGGCGTATTACAAGATAGTAGAGCATAATTTCAAAAGCATTGGGTTATTATCAGGCGTCAGTCTCTCAGGGCGGAAAGAGTGCGGCTTTATTTATCTCCGGTGTTTTTGATAAAGCCAGTCCTGATGTCTAGAATGTGGTACGCACCCGATGAGAAATTGCGCAAATTATATGATGGTATTTACGATAAACTTGCCGCTGATCCTGATTTTCGTTTTCCCAACTTGAAAGGACCATCCTCTACCTTCTCACCCGACCCAGGGCTACGATGCAGATCGGCCCGACTGGAAACCGGGGCAGTGA",
                          )
 
     def test_get_functions_pathways_go(self):
@@ -484,7 +451,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         # Get test scraper.
         scraper = setup_scraper_incomplete()
 
-        gene_url = scraper._get_feature_url(scraper.query[0])
+        gene_url = scraper._get_feature_url(scraper.query)
 
         # Get sequences tables.
         panels = scraper._get_operons(gene_url)
@@ -513,8 +480,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         check_keys(self,
                    expected_keys,
                    panels[
-                       'PA14_67230-PA14_67220-PA14_67210-PA14\
-                       _67200-PA14_67190-PA14_67180'
+                       'PA14_67230-PA14_67220-PA14_67210-PA14_67200-PA14_67190-PA14_67180'
                    ]
                    )
 
@@ -528,17 +494,13 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
 
         # Get sequences tables.
         panels = scraper._get_transposon_insertions(
-            scraper._get_feature_url(scraper.query[0]
+            scraper._get_feature_url(scraper.query
                                      )
         )
 
-        # Check keys.
-        expected_keys = ['Transposon Insertions in SBW25',
-                         'Transposon Insertions in Orthologs'
-                         ]
-        check_keys(self, expected_keys, panels)
+        self.assertEqual(panels, [])
 
-    def test_get_transposon_insertions_in_ortholog(self):
+    def test_get_transposon_insertions(self):
         """
         Test the scraping of the "Transposon Insertions" tab
         on pseudomonas.com with TIs in orthologs.
@@ -552,44 +514,15 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
             "https://www.pseudomonas.com/feature/show/?id=1661770"
         )
 
-        # Check keys.
-        expected_keys = [
-            'Transposon Insertions in UCBPP-PA14',
-            'Transposon Insertions in Orthologs'
-        ]
-        check_keys(self, expected_keys, panels)
-
-        ti_orth = panels['Transposon Insertions in Orthologs']
-        self.assertEqual(len(ti_orth.columns), 7)
-        self.assertEqual(len(ti_orth.index), 2)
+        self.assertEqual(len(panels), 3)
 
         # Mutant IDs should be different
-        self.assertEqual(ti_orth.loc[0, 'Mutant ID'], 'UWGC: PW9532')
-        self.assertEqual(ti_orth.loc[1, 'Mutant ID'], 'UWGC: PW9531')
+        self.assertEqual(panels[0]['Mutant ID'], 'UWGC: PW9532')
+        self.assertEqual(panels[1]['Mutant ID'], 'UWGC: PW9531')
 
         # Genetic positions should be different
-        self.assertEqual(ti_orth.loc[0, 'Genomic Position'], '5722847')
-        self.assertEqual(ti_orth.loc[1, 'Genomic Position'], '5723351')
-
-    def test_get_transposon_insertions(self):
-        """
-        Test the scraping of the "Transposon Insertions"
-        tab on pseudomonas.com.
-        """
-
-        # Get test scraper.
-        scraper = setup_scraper_complete()
-
-        # Get sequences tables.
-        panels = scraper._get_transposon_insertions(
-            "https://www.pseudomonas.com/feature/show/?id=1661780"
-        )
-
-        # Check keys.
-        expected_keys = ['Transposon Insertions in UCBPP-PA14',
-                         'Transposon Insertions in Orthologs'
-                         ]
-        check_keys(self, expected_keys, panels)
+        self.assertEqual(panels[0]['Genomic Position'], '5722847')
+        self.assertEqual(panels[1]['Genomic Position'], '5723351')
 
     def test_get_updates_missing(self):
         """ Test the scraping of the "updates" tab on pseudomonas.com."""
@@ -599,7 +532,7 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
 
         # Get sequences tables.
         panels = scraper._get_updates(
-            scraper._get_feature_url(scraper.query[0])
+            scraper._get_feature_url(scraper.query)
         )
 
         # Check keys.
@@ -668,175 +601,6 @@ class PseudomonasDotComScraperTest(unittest.TestCase):
         panels = scraper._get_cross_references(
             "https://www.pseudomonas.com/feature/show/?id=1661780"
         )
-
-        urls = panels['url']
-        self.assertIn(
-            "http://www.ncbi.nlm.nih.gov/protein/YP_793558.1", urls.values
-        )
-
-    def test_results_with_all_tabs(self):
-        """ Run a query on a strain with a 'complete' dataset."""
-
-        # Setup the query.
-        query = pdc_query(strain='UCBPP-PA14', feature='PA14_67210')
-
-        # Fetch results.
-        scraper = PseudomonasDotComScraper(query=query)
-        scraper.connect()
-
-        # Setup the query.
-        query = pdc_query(strain='UCBPP-PA14', feature='PA14_67210')
-
-        # Fetch results.
-        scraper = PseudomonasDotComScraper(query=query)
-        scraper.connect()
-        scraper.run_query()
-        results = scraper.results['UCBPP-PA14__PA14_67210']
-
-        expected_keys = ["Overview",
-                         "Sequences",
-                         "Function/Pathways/GO",
-                         "Motifs",
-                         "Operons",
-                         "Transposon Insertions",
-                         "Updates",
-                         "Orthologs",
-                         ]
-
-        check_keys(self, expected_keys, results)
-
-        overview = results["Overview"]
-        expected_keys = [
-                         "Gene Feature Overview",
-                         "Cross-References",
-                         "Product",
-                         "Subcellular Localizations",
-                         "Pathogen Association Analysis",
-                         "References",
-                         ]
-        check_keys(self, expected_keys, overview)
-
-        go = results["Function/Pathways/GO"]
-        expected_keys = [
-                         "Gene Ontology",
-                         "Functional Classifications Manually Assigned by\
-            PseudoCAP",
-                         "Functional Predictions from Interpro",
-                        ]
-        check_keys(self, expected_keys, go)
-
-    def test_results_with_references(self):
-        """ Run a query that returns non-empty references. """
-
-        # Setup the query.
-        query = pdc_query(strain='UCBPP-PA14', feature='PA14_67210')
-
-        # Fetch results.
-        scraper = PseudomonasDotComScraper(query=query)
-        scraper.connect()
-        scraper.run_query()
-        results = scraper.results[
-            'UCBPP-PA14__PA14_67210'
-        ][
-            "Overview"
-        ][
-            'References'
-        ]
-
-        # Check column names.
-        self.assertIn('citation', results.columns)
-        self.assertIn('pubmed_url', results.columns)
-
-        # Check first author.
-        citation = results.loc[0]['citation']
-        rx = re.compile(r'Allsopp\s')
-
-        self.assertIsNotNone(rx.match(citation))
-
-    def test_pandas_references(self):
-        """ Test the references parser function."""
-
-        soup = BeautifulSoup(guarded_get(
-            "https://www.pseudomonas.com/feature/show/\
-            ?id=1661780&view=overview"), 'lxml'
-        )
-
-        references = _pandas_references(soup)
-
-        print(references)
-
-    def test_bib_from_doi(self):
-        """ Test the get_bib_from_doi utility. """
-
-        doi = '10.1073/pnas.1700286114'
-
-        bib = _get_bib_from_doi(doi)
-
-        expected_keys = ['doi',
-                         'first_author',
-                         'title',
-                         'container',
-                         'volume',
-                         'page',
-                         'date',
-                         ]
-
-        present_keys = bib.keys()
-        for key in expected_keys:
-            self.assertIn(key, present_keys)
-
-    @unittest.expectedFailure
-    def test_json_io(self):
-        """ Test the IO capabilities based on the json format. """
-
-        # Setup the query.
-        query = pdc_query(strain='UCBPP-PA14', feature='PA14_67210')
-
-        # Setup the scraper.
-        scraper = PseudomonasDotComScraper(query=query)
-
-        # Connect and run the query.
-        scraper.connect()
-
-        scraper.run_query()
-        results = scraper.results
-
-        # Serialize.
-        json_path = scraper.to_json(results)
-        self._test_files.append(json_path)
-
-        # Check file exists.
-        self.assertTrue(os.path.isfile(json_path))
-
-        # Read back in.
-        loaded_results = scraper.from_json(json_path)
-
-        # Check entity and keys.
-        self.assertIsInstance(loaded_results, dict)
-        expected_query_key = 'UCBPP-PA14__PA14_67210'
-        self.assertIn(expected_query_key, loaded_results.keys())
-        self.assertIsInstance(loaded_results[expected_query_key], dict)
-
-        # Check keys in query results.
-        query_results = loaded_results['UCBPP-PA14__PA14_67210']
-        expected_keys = ["Gene Feature Overview",
-                         "Cross-References",
-                         "Product",
-                         "Subcellular localization",
-                         "Pathogen Association Analysis",
-                         "Orthologs/Comparative Genomics",
-                         "Interactions",
-                         "References",
-                         "Gene Ontology",
-                         "Functional Classifications Manually Assigned\
-                         by PseudoCAP",
-                         "Functional Predictions from Interpro",
-                         ]
-        present_keys = query_results.keys()
-
-        for xk in expected_keys:
-            self.assertIn(xk, present_keys)
-            self.assertIsInstance(query_results[xk], pandas.DataFrame)
 
 
 if __name__ == "__main__":

@@ -83,60 +83,72 @@ class PseudomonasDotComScraper():
 
         :raises KeyError: Both 'strain' and 'organism' are provided.
         """
-
         # Checks
         if val is None:
-            val = [pdc_query(strain='sbw25')]
+            val = pdc_query(strain='sbw25')
 
-        exc = TypeError("The parameter 'query' must be a dict or pdc_query or a list, tuple, or set of queries. Examples: query={'strain' : 'sbw25', 'feature'='pflu0916'}; query=pdc_query(strain='sbw25', feature='pflu0916') or query=[pdc_query(strain='sbw25', feature='pflu0916'), pdc_query(strain='sbw25', feature='pflu0917')].")
+        exc = TypeError("The parameter 'query' must be a dict or pdc_query. \
+                        Examples: query={'strain' : 'sbw25', 'feature'='pflu0916'};\
+                        query=pdc_query(strain='sbw25', feature='pflu0916').")
 
-        if not isinstance(val, list):
-            if not (isinstance(val, dict) or isinstance(val, pdc_query)):
-                raise exc
-            else:
-                val = [val]
+        if isinstance(val, list):
+            raise exc
 
-        for i, v in enumerate(val):
-            if isinstance(v, dict):
-                pass
-            elif isinstance(v, pdc_query):
-                pass
-            else:
-                raise exc
+        if isinstance(val, dict):
+            pass
+        elif isinstance(val, pdc_query):
+            pass
+        else:
+            raise exc
 
-        # Iterate over all queries.
-        for i, v in enumerate(val):
-            # Check keys if dict.
-            if isinstance(v, dict):
-                # Only these are acceptable query keywords.
-                accepted_keys = ('strain', 'feature', 'organism')
-                present_keys = v.keys()
-                for k in present_keys:
-                    if k not in accepted_keys:
-                        raise KeyError("Only 'strain', 'feature', and 'organism' are acceptable keys.)")
+        if isinstance(val, dict):
+            # Only these are acceptable query keywords.
+            accepted_keys = ('strain', 'feature', 'organism')
+            present_keys = val.keys()
+            for k in present_keys:
+                if k not in accepted_keys:
+                    raise KeyError("Only 'strain', 'feature', and 'organism'\
+                                   are acceptable keys.)"
+                                   )
 
-                # Complete keywords.
-                if 'strain' not in v.keys():
-                    v['strain'] = None
-                if 'feature' not in v.keys():
-                    v['feature'] = None
-                if 'organism' not in v.keys():
-                    v['organism'] = None
+            # Complete keywords.
+            if 'strain' not in val.keys():
+                val['strain'] = None
+            if 'feature' not in val.keys():
+                val['feature'] = None
+            if 'organism' not in val.keys():
+                val['organism'] = None
 
-                # Convert to pdc_query
-                logging.info('Query dictionary passed to pseudomonas.com scraper will now be converted to a pdc_query object. See reference manual for more details.')
-                v = _dict_to_pdc_query(**v)
+            # Convert to pdc_query
+            logging.info('Query dictionary passed to pseudomonas.com\
+                         scraper will now be converted to a pdc_query object.\
+                         See reference manual for more details.'
+                         )
+            val = _dict_to_pdc_query(**val)
 
-            # Check keywords are internally consistent.
-            if v.organism is not None and v.strain is not None:
-                raise KeyError("Invalid combination of query keywords: 'organism' must not be combined with 'strain'.")
+        # Check keywords are internally consistent.
+        if val.organism is not None and val.strain is not None:
+            raise KeyError("Invalid combination of query keywords:\
+                           'organism' must not be combined with 'strain'.")
 
-            # Check all values are strings or None.
-            for vv in v[:]:
-                if not (isinstance(vv, str) or vv is None):
-                    raise TypeError("All values in the query must be of type str.")
-            # Reset checked item.
-            val[i] = v
+        if val.organism is not None and not isinstance(val.organism, str):
+            raise TypeError("Wrong type for 'query.organism'. \
+                            Expected {}, received {}".format("str",
+                                                             type(val.organism)
+                                                             )
+                            )
+        if val.strain is not None and not isinstance(val.strain, str):
+            raise TypeError("Wrong type for 'query.strain'. \
+                            Expected {}, received {}".format("str",
+                                                             type(val.strain)
+                                                             )
+                            )
+        if val.feature is not None and not isinstance(val.feature, str):
+            raise TypeError("Wrong type for 'query.feature'. \
+                            Expected {}, received {}".format("str",
+                                                             type(val.feature)
+                                                             )
+                            )
 
         self.__query = val
 
@@ -179,12 +191,13 @@ class PseudomonasDotComScraper():
         # If provided, update the local query object. This way, user can submit a query at run time.
         if query is not None:
             self.query = query
+        else:
+            query = self.query
 
         results = dict()
 
-        for query in self.query:
-            key = "{0:s}__{1:s}".format(query.strain, query.feature)
-            results[key] = self._run_one_query(query)
+        key = "{0:s}__{1:s}".format(query.strain, query.feature)
+        results[key] = self._run_one_query(query)
 
         self.__results = results
 
@@ -214,7 +227,7 @@ class PseudomonasDotComScraper():
 
         # If we're looking for a unique feature.
         if _feature is not '':
-            feature_link = browser.find_all('a', string=re.compile(_feature.upper()))[0].get('href')
+            feature_link = browser.find_all('a', string=re.compile(_feature))[0].get('href')
 
         return self.__pdc_url + feature_link
 
@@ -232,13 +245,15 @@ class PseudomonasDotComScraper():
 
         # Go through all panels and pull data.
         panels["Overview"] = self._get_overview(feature_url)
-        panels["Sequences"] = self._get_sequences(feature_url)
-        panels["Function/Pathways/GO"] = self._get_functions_pathways_go(feature_url)
-        panels["Motifs"] = self._get_motifs(feature_url)
+        # panels["Sequences"] = self._get_sequences(feature_url)
+        panels["Function/Pathways/GO"] =\
+        self._get_functions_pathways_go(feature_url)
+        # panels["Motifs"] = self._get_motifs(feature_url)
         panels["Operons"] = self._get_operons(feature_url)
-        panels["Transposon Insertions"] = self._get_transposon_insertions(feature_url)
-        panels["Updates"] = self._get_updates(feature_url)
-        panels["Orthologs"] = self._get_orthologs(feature_url)
+        panels["Transposon Insertions"] =\
+            self._get_transposon_insertions(feature_url)
+        # panels["Updates"] = self._get_updates(feature_url)
+        # panels["Orthologs"] = self._get_orthologs(feature_url)
 
         # All done, return.
         return panels
@@ -262,23 +277,37 @@ class PseudomonasDotComScraper():
         # Empty return dict.
         overview_panel = dict()
 
-        overview_panel["Gene Feature Overview"] = _pandasDF_from_heading(browser, "Gene Feature Overview", None)
+        gfo = _pandasDF_from_heading(browser, "Gene Feature Overview", 0)[1]
+
+        #Cleanup.
+        location = gfo["Genomic_location"].split(' ')
+        gfo["Start"] = int(location[0])
+
+        gfo["Stop"] = int(location[2])
+        gfo["Strand"] = location[3][1]
+
+        del gfo["Genomic_location"]
 
         # Get cross-references with hyperlinks.
-        overview_panel["Cross-References"] = self._get_cross_references(url)
+        crossrefs = self._get_cross_references(url)['id']
 
         # Get remaining tables.
-        overview_panel["Product"] = _pandasDF_from_heading(browser, "Product", None)
+        product = _pandasDF_from_heading(browser, "Product", 0)[1]
+        product.loc["Evidence_for_Translation":] = pandas.to_numeric(
+            product.loc["Evidence_for_Translation":],
+            errors='coerce')
+
 
         # Get subcellular localizations.
-        overview_panel["Subcellular Localizations"] = self._get_subcellular_localizations(browser)
-        overview_panel["Pathogen Association Analysis"] = _pandasDF_from_heading(browser, "Pathogen Association Analysis", 0)
+        # overview_panel["Subcellular Localizations"] = self._get_subcellular_localizations(browser)
+        # overview_panel["Pathogen Association Analysis"] = _pandasDF_from_heading(browser, "Pathogen Association Analysis", 0)
         #overview_panel["Orthologs/Comparative Genomics"] = _pandasDF_from_heading(browser, "Orthologs/Comparative Genomics", 0)
         #overview_panel["Interactions"] = _pandasDF_from_heading(browser, "Interactions", 0)
-        overview_panel["References"] = _pandas_references(browser)
 
-        return overview_panel
+        ret = pandas.concat([gfo, crossrefs, product]).to_dict()
+        ret["pubmed_references"] = _pandas_references(browser)
 
+        return ret
     def _get_cross_references(self, url):
         """ Extract the cross-references table with hyperlinks from the feature overview tab. """
         # Get ovierview tab.
@@ -295,7 +324,6 @@ class PseudomonasDotComScraper():
         # Lists to store the data.
         ref_types = []
         ref_ids = []
-        ref_urls = []
 
         # Need to substitute \t\s sequences.
         pattern = re.compile('[\t\s]')
@@ -313,23 +341,19 @@ class PseudomonasDotComScraper():
             hyperlink = cols[1].find('a')
             if hyperlink is not None:
                 ref_id_text = pattern.sub('', hyperlink.text)
-                ref_id_url = hyperlink.get('href')
             else:
                 ref_id_text = pattern.sub('', cols[1].text)
-                ref_id_url = None
 
             # Append to lists.
             ref_types.append(ref_type)
             ref_ids.append(ref_id_text)
-            ref_urls.append(ref_id_url)
 
         # Setup the return dataframe.
         df = pandas.DataFrame(numpy.empty((len(ref_types), 0)))
 
         # Columns.
-        df['type'] = ref_types
+        df.index = ref_types
         df['id'] = ref_ids
-        df['url'] = ref_urls
 
         # Insert into panels.
         return df
@@ -391,7 +415,9 @@ class PseudomonasDotComScraper():
 
         df.loc[df[0]=="Amino Acid Sequence", 1] = aaseq
 
-        return df
+        df = df.set_index(df[0])
+
+        return df[1].to_dict()
 
     def _get_functions_pathways_go(self, url):
         """
@@ -412,12 +438,29 @@ class PseudomonasDotComScraper():
 
         browser = BeautifulSoup(guarded_get(function_url), 'lxml')
 
-        panels["Gene Ontology"] = _pandasDF_from_heading(browser, "Gene Ontology", None)
-        panels["Functional Classifications Manually Assigned by PseudoCAP"] = _pandasDF_from_heading(browser, "Functional Classifications Manually Assigned by PseudoCAP", None)
-        panels["Functional Predictions from Interpro"] = _pandasDF_from_heading(browser, "Functional Predictions from Interpro", None)
+        go = _pandasDF_from_heading(browser, "Gene Ontology", None).transpose().to_dict()
+        panels["Gene Ontology"] = go
+        #fc_pcap = \
+        #    _pandasDF_from_heading(browser,
+        #                           "Functional Classifications Manually Assigned by PseudoCAP",
+        #                           None)
 
-        # Convert E-values to floats.
-        panels["Functional Predictions from Interpro"]["E-value"] = pandas.to_numeric(panels["Functional Predictions from Interpro"]["E-value"], errors='coerce', downcast='float')
+        #panels["Functional Classifications Manually Assigned by PseudoCAP"] = fc_pcap
+        fc_interpro = {}
+        try:
+            fc_interpro = \
+                _pandasDF_from_heading(browser,
+                                    "Functional Predictions from Interpro",
+                                    None)
+            # Convert E-values to floats.
+            fc_interpro["E-value"] = pandas.to_numeric(fc_interpro["E-value"], errors='coerce', downcast='float')
+            fc_interpro = fc_interpro.transpose().to_dict()
+        except AttributeError:
+            logging.info("No Interpro Data found on %s", function_url)
+        except:
+            raise
+
+        panels["Functional Predictions from Interpro"] = fc_interpro
 
         return panels
 
@@ -480,7 +523,7 @@ class PseudomonasDotComScraper():
             name = tabs.sub("", name)
             name = name.split("\n")[2]
 
-            operon_dict['Genes'] = tmp[1]
+            operon_dict['Genes'] = [v for v in tmp[1].transpose().to_dict().values()]
 
             # Collect metadata (evidence and cross-references)
             meta = {}
@@ -493,7 +536,7 @@ class PseudomonasDotComScraper():
             cross_references = re.compile("[\t\n\s]").sub("", cross_references)
             meta["Cross-References"] =  cross_references
 
-            operon_dict["Meta"] = pandas.DataFrame([meta])
+            operon_dict["Meta"] = meta
 
             references = operon.find_all(string=re.compile('PubMed ID'))
             refs = []
@@ -505,11 +548,9 @@ class PseudomonasDotComScraper():
                 pubmed_id = re.compile('[\t\n\s]').sub('', pubmed_id)
 
                 refs.append(dict(pubmed_id=pubmed_id))
-            operon_dict['References'] = pandas.DataFrame(refs)
+            operon_dict['References'] = refs
 
             operons_dict[name] = operon_dict
-
-
 
         # Loop over headings and get table as pandas.DataFrame.
         return operons_dict
@@ -585,10 +626,24 @@ class PseudomonasDotComScraper():
                 table_dict = OrderedDict(zip(keys, values))
                 list_of_dicts.append(table_dict)
 
-            transposon_dict[key] = pandas.DataFrame(list_of_dicts)
+            transposon_dict[key] = list_of_dicts
 
+        # Clean up (add missing key-val pairs) in same-strain transposons.
+        in_strain_transposons = transposon_dict["Transposon Insertions in {}".format(self.query.strain)]
+        in_ortholog_transposons = transposon_dict["Transposon Insertions in Orthologs"]
+        if in_strain_transposons is not None:
+            for od in in_strain_transposons:
+                od["Strain"] = self.query.strain
+                od["Locus Tag"] = self.query.feature
+
+        # Append to list of tranposon insertions, which is the one to
+        # return.
+        if in_ortholog_transposons is not None:
+            in_ortholog_transposons += in_strain_transposons
+        else:
+            in_ortholog_transposons = []
         # Return
-        return transposon_dict
+        return in_ortholog_transposons
 
     def _get_updates(self, url):
         """ Parse the 'Updates' tab and extract the tables.
@@ -606,7 +661,7 @@ class PseudomonasDotComScraper():
         browser = BeautifulSoup(guarded_get(updates_url), 'lxml')
 
         heading = browser.find('h3', string=re.compile('Annotation Updates'))
-        updates = {"Annotation Updates" : pandas.read_html(str(heading.parent))[0]}
+        updates = {"Annotation Updates" : pandas.read_html(str(heading.parent))[0].to_dict()}
 
         return updates
 
@@ -676,7 +731,7 @@ class PseudomonasDotComScraper():
             og = pandas.DataFrame()
             raise
 
-        panel["Ortholog group"] = og
+        panel["Ortholog group"] = og.transpose().to_dict()
 
         # Construct the URL for the orthologs cluster DB.
         # XML
@@ -700,15 +755,15 @@ class PseudomonasDotComScraper():
             df = pandas.read_csv(ortholog_cluster_csv)
             # Remove html links (redundant because GI is present).
             df = df.drop(columns="NCBI GI link (Strain 1)").drop(columns="NCBI GI link (Strain 2)")
-            panel["Ortholog cluster"] = df
+            panel["Ortholog cluster"] = df.transpose().to_dict()
 
         except:
             logging.warning("Could not read csv resource. Will return empty dataframe.")
-            panel["Ortholog cluster"] = pandas.DataFrame()
+            panel["Ortholog cluster"] = pandas.DataFrame().transpose().to_dict()
 
         return panel
 
-    def to_json(self, results, outfile=None):
+    def to_dict(self, results, outfile=None):
         """ Serialize results dictionary to json.
 
         :param results: The results dictionary (dict of pandas.DataFrame).
@@ -838,13 +893,12 @@ def _pandas_references(soup):
     # Loop over all <a> tags
     for i, a in enumerate(a_tags):
         # Get the link text.
-        pubmed_link = a.get('href')
 
-        citation = Publication(PubMedLookup(pubmed_link, '')).cite()
-        raw.append(dict(pubmed_url=pubmed_link, citation=citation))
+        pubmed_id = a.text.strip()
 
-    # Return as pandas.DataFrame.
-    return pandas.DataFrame(raw)
+        raw.append(pubmed_id)
+
+    return raw
 
 
 def _get_doi_from_ncbi(pubmed_link):
@@ -909,7 +963,7 @@ def _run_from_cli(args):
         return 0
 
     try:
-        path = scraper.to_json(results, args.outfile)
+        path = scraper.to_dict(results, args.outfile)
     except:
         logging.error("Could not write results to disk.")
         raise
