@@ -47,9 +47,8 @@ def feature_okm(locus_tag):
 def run_pdc(strain=None, locus_tag=None):
     
     clear_output(wait=True)
-    
-    pdc = PseudomonasDotComScraper(query=pdc_query(strain=strain, feature=locus_tag))
-    query_string = "__".join([pdc.query[0].strain, pdc.query[0].feature])
+    query=pdc_query(strain=strain, feature=locus_tag)
+    pdc = PseudomonasDotComScraper(query)
     pdc.connect()
     pdc.run_query()
     
